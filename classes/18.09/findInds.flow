@@ -1,0 +1,54 @@
+import runtime;
+import ds/array;
+import string;
+import ds/tree;
+
+NumbInd(
+	index : int,
+	numb : int
+);
+
+/*
+inds(array : [int], m : int)->[Pair<int, int>]{
+	arrInd = fold(array, Pair([], 0), \acc, n -> {
+		newArr = concat(acc.first, [NumbInd(acc.second, n)]);
+		Pair(newArr, acc.second + 1)
+	}
+	).first;
+	
+	fold(arrInd, [], \acc, a ->
+		fold(arrInd, acc, \bcc, b ->
+			if(a.numb + b.numb != m) bcc
+			else concat(bcc, [Pair(a.index, b.index)])
+		)
+	)
+}
+*/
+
+inds(array : [int], m : int)->[Pair<int, int>]{
+	madeTree : Tree<int, [int]> = foldi(array, makeTree(), \i, acc, el -> {
+		switch(lookupTree(acc, el)){
+			Some(value) : setTree(acc, el, concat(value, [i]));
+			None() : setTree(acc, el, [i]);
+		}
+	});
+	foldi(array, [], \i, acc, a ->{
+		b = m - a;
+		switch(lookupTree(madeTree, b)){
+			Some(value) : concat(acc, fold(value, [], \bcc, n ->{
+				if(i < n) concat(bcc, [Pair(i, n)])
+				else bcc
+			}
+			));
+			None() : acc;
+		}
+		}
+	)
+}
+
+main() {
+	array : [int] = [1, 2, 3, 4, 5, 2, 6, 0, 7];
+	println(map(inds(array, 7), \pair ->{
+		i2s(pair.first) + " " + i2s(pair.second)
+	}));
+}
