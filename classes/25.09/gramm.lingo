@@ -1,0 +1,5 @@
+S = plus | mult | int;
+plus = "(" S:l "+" S:r ")" {ArPlus(:l, :r)};
+mult = "(" S:l "*" S:r ")" {ArMult(:l, :r)};
+int = digit + $s {ArInt(s2i($s))};
+digit = '0' - '9';

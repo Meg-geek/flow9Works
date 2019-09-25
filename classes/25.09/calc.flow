@@ -1,0 +1,54 @@
+import runtime;
+import string;
+import lingo/pegcode/driver;
+
+ArExp::=ArPlus, ArMult, ArInt;
+
+ArPlus(
+	lhs : ArExp,
+	rhs : ArExp
+);
+
+ArMult(
+	lhs : ArExp,
+	rhs : ArExp
+);
+
+ArInt(
+	val : int
+);
+
+arExp2i(expr : ArExp)->int{
+	switch(expr){
+		ArPlus(lhs, rhs) : 
+			arExp2i(lhs) + arExp2i(rhs);
+		ArMult(lhs, rhs) :
+			arExp2i(lhs) * arExp2i(rhs);
+		ArInt(val) :
+			val;
+	}
+}
+
+
+arExp2s(expr : ArExp)->string{
+	switch(expr){
+		ArPlus(lhs, rhs) : 
+			concatStrings(["(", arExp2s(lhs), "+", arExp2s(rhs), ")"]);
+		ArMult(lhs, rhs) :
+			concatStrings(["(", arExp2s(lhs), "*", arExp2s(rhs), ")"]);
+		ArInt(val) :
+			i2s(val);
+	}
+}
+
+s2arExp(s : string) -> ArExp{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+main(){
+	test = ArPlus(ArInt(1), ArMult(ArInt(2), ArInt(3))); //7
+	println(arExp2i(test));
+	println(arExp2s(test));
+	println(s2arExp("(2+(3*8))"));
+}
