@@ -1,1 +1,119 @@
-﻿t
+﻿import runtime;
+import string;
+import lingo/pegcode/driver;
+import maybe;
+
+ArExp::=ArPlus, ArMult, ArInt;
+
+ArPlus(
+	lhs : ArExp,
+	rhs : ArExp
+);
+
+ArMult(
+	lhs : ArExp,
+	rhs : ArExp
+);
+
+ArInt(
+	val : int
+);
+
+ArRPN::=RPNop, RPNarg;
+
+RPNarg(
+	val : int
+);
+
+RPNop::=RPNPlus, RPNmult;
+
+RPNPlus();
+RPNmult();
+
+ar2RPN (expr : ArExp)->[ArRPN]{
+	switch(expr){
+		ArPlus(lhs, rhs) : 
+			concat3(ar2RPN(lhs), ar2RPN(rhs), [RPNPlus()]);
+		ArMult(lhs, rhs) : 
+			concat3(ar2RPN(lhs), ar2RPN(rhs), [RPNmult()]);
+		ArInt(val) :
+			[RPNarg(val)];
+	}
+}
+
+
+RPN2s (expr : [ArRPN]) -> string {
+	strGlue( map(expr, \el -> {
+		switch(el){
+			RPNarg(val) :
+				i2s(val);
+			RPNPlus():
+				"+";
+			RPNmult():
+				"*";
+		}
+	}
+	), " ");
+}
+
+
+PRN2ar(expr : [ArRPN]) -> Maybe<ArExp>{
+	fold(expr, [], \stack, el ->{
+		switch(el){
+			RPNarg(val) :
+				concat(stack, [ArInt(val)]);
+			RPNPlus(): {
+				//if(length(stack) > 0){
+					//[];
+				//}
+				newExpr : ArPlus(stack[length(stack) - 1], stack[length(stack) - 2]);
+				stack = removeIndex(stack, length(stack) - 1);
+				stack = removeIndex(stack, length(stack) - 1);
+				concat(stack, [newExpr]);
+			}
+			RPNmult(): {
+				newExpr : ArMult(stack[length(stack) - 1], stack[length(stack) - 2]);
+				stack = removeIndex(stack, length(stack) - 1);
+				stack = removeIndex(stack, length(stack) - 1);
+				concat(stack, [newExpr]);
+			}
+		}
+	})
+}
+
+arExp2i(expr : ArExp)->int{
+	switch(expr){
+		ArPlus(lhs, rhs) : 
+			arExp2i(lhs) + arExp2i(rhs);
+		ArMult(lhs, rhs) :
+			arExp2i(lhs) * arExp2i(rhs);
+		ArInt(val) :
+			val;
+	}
+}
+
+
+arExp2s(expr : ArExp)->string{
+	switch(expr){
+		ArPlus(lhs, rhs) : 
+			concatStrings(["(", arExp2s(lhs), "+", arExp2s(rhs), ")"]);
+		ArMult(lhs, rhs) :
+			concatStrings(["(", arExp2s(lhs), "*", arExp2s(rhs), ")"]);
+		ArInt(val) :
+			i2s(val);
+	}
+}
+
+s2arExp(s : string) -> ArExp{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+main(){
+	test = ArPlus(ArInt(1), ArMult(ArInt(2), ArInt(3))); //7
+	println(arExp2i(test));
+	println(arExp2s(test));
+	println(s2arExp("(2+(3*8))"));
+	println(ar2RPN(test));
+	println(RPN2s(ar2RPN(test)));
+}
