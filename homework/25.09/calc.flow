@@ -57,28 +57,38 @@ RPN2s (expr : [ArRPN]) -> string {
 }
 
 
-PRN2ar(expr : [ArRPN]) -> Maybe<ArExp>{
+RPN2ar(expr : [ArRPN]) -> ArExp{
 	fold(expr, [], \stack, el ->{
 		switch(el){
 			RPNarg(val) :
 				concat(stack, [ArInt(val)]);
 			RPNPlus(): {
-				//if(length(stack) > 0){
-					//[];
-				//}
-				newExpr : ArPlus(stack[length(stack) - 1], stack[length(stack) - 2]);
-				stack = removeIndex(stack, length(stack) - 1);
-				stack = removeIndex(stack, length(stack) - 1);
-				concat(stack, [newExpr]);
+				newstack = concat(stack, [ArPlus(stack[length(stack) - 1], stack[length(stack) - 2])]);
+				removeRange(newstack, length(newstack) - 3, 2);
 			}
 			RPNmult(): {
-				newExpr : ArMult(stack[length(stack) - 1], stack[length(stack) - 2]);
-				stack = removeIndex(stack, length(stack) - 1);
-				stack = removeIndex(stack, length(stack) - 1);
-				concat(stack, [newExpr]);
+				newstack = concat(stack, [ArMult(stack[length(stack) - 1], stack[length(stack) - 2])]);
+				removeRange(newstack, length(newstack) - 3, 2);
 			}
 		}
-	})
+	})[0]
+}
+
+RPN2i(expr : [ArRPN])-> int{
+	fold(expr, [], \stack, el -> {
+		switch(el){
+			RPNarg(val) :
+				concat(stack, [val]);
+			RPNPlus(): {
+				newstack = concat(stack, [ stack[length(stack) - 1] + stack[length(stack) - 2]]);
+				removeRange(newstack, length(newstack) - 3, 2);
+			}
+			RPNmult(): {
+				newstack = concat(stack, [ stack[length(stack) - 1] * stack[length(stack) - 2]]);
+				removeRange(newstack, length(newstack) - 3, 2);
+			}
+		}
+	})[0]
 }
 
 arExp2i(expr : ArExp)->int{
@@ -116,4 +126,6 @@ main(){
 	println(s2arExp("(2+(3*8))"));
 	println(ar2RPN(test));
 	println(RPN2s(ar2RPN(test)));
+	println(RPN2ar(ar2RPN(test)));
+	println(RPN2i(ar2RPN(test)));
 }
