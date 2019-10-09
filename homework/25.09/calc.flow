@@ -74,6 +74,44 @@ RPN2ar(expr : [ArRPN]) -> ArExp{
 	})[0]
 }
 
+RPN2arM(expr : [ArRPN]) -> Maybe {
+	ms = fold(expr, Some([]), \mStack, el -> {
+		maybeBind(mStack, \stack -> {
+			switch(el){
+				RPNarg(val) :
+					Some(concat(stack, [ArInt(val)]));
+				RPNPlus(): {
+					if(length(stack) > 1){
+						newstack = concat(stack, [ArPlus(stack[length(stack) - 1], stack[length(stack) - 2])]);
+						Some(removeRange(newstack, length(newstack) - 3, 2));
+					} else {
+						None();
+					}
+				}
+				RPNmult(): {
+					if(length(stack) > 1){
+						newstack = concat(stack, [ArMult(stack[length(stack) - 1], stack[length(stack) - 2])]);
+						Some(removeRange(newstack, length(newstack) - 3, 2));
+					} else {
+						None();
+					}
+				}
+			}
+		})
+	});
+	switch(ms){
+		Some(val): {
+				if(length(val) == 1){
+						Some(val[0]);
+				} else {
+					None();
+				}
+			}
+		None():
+			None();
+	}
+}
+
 RPN2i(expr : [ArRPN])-> int{
 	fold(expr, [], \stack, el -> {
 		switch(el){
@@ -128,4 +166,15 @@ main(){
 	println(RPN2s(ar2RPN(test)));
 	println(RPN2ar(ar2RPN(test)));
 	println(RPN2i(ar2RPN(test)));
+	println("Tests for RPN2arM");
+	test1 = [RPNarg(5), RPNPlus()];
+	println(RPN2arM(test1));
+	
+	test2 = [RPNarg(5), RPNPlus(), RPNarg(5)];
+	println(RPN2arM(test2));
+	
+	test3 = [RPNarg(5), RPNarg(5), RPNPlus()];
+	println(RPN2arM(test3));
+	
+	println(RPN2arM([]));
 }
