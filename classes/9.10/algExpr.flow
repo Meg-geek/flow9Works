@@ -1,0 +1,66 @@
+import runtime;
+import string;
+import maybe;
+import lingo/pegcode/driver;
+import ds/tree;
+
+AlgExp ::= AlgPlus, AlgMult, AlgVar, AlgInt;
+
+AlgPlus(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgMult(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgVar(
+	var : string
+);
+
+AlgInt(
+	val : int
+);
+
+algExp2s(expr : AlgExp) -> string {
+	switch(expr){
+		AlgPlus(lhs, rhs) : 
+			concatStrings(["(", algExp2s(lhs), "+", algExp2s(rhs), ")"]);
+		AlgMult(lhs, rhs) :
+			concatStrings(["(", algExp2s(lhs), "*", algExp2s(rhs), ")"]);
+		AlgInt(val) :
+			i2s(val);
+		AlgVar(var):
+			var;
+	}
+}
+
+s2Exp(s : string) -> AlgExp{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+alg2i (expr : AlgExp, val_var: Tree<string, int>) -> Maybe{
+	switch(expr){
+		ArPlus(lhs, rhs) :{
+			mlhs = alg2i(lhs, val_var);
+			mrhs = alg2i(rhs, val_var);
+			maybeBind2();
+		} 
+		ArMult(lhs, rhs) :
+			arExp2i(lhs) * arExp2i(rhs);
+		AlgInt(val) :
+			Some(val);
+		AlgVar(var) : 
+			lookupTree(val_var, var);
+	}
+}
+
+main(){
+	test = AlgPlus(AlgVar("hello"), AlgPlus(AlgVar("world"), AlgVar("!")));
+	println(algExp2s(test));
+	
+	println(s2Exp("((2+5)*aBc)"));
+}
