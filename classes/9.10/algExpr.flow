@@ -44,6 +44,36 @@ s2Exp(s : string) -> AlgExp{
 
 alg2i (expr : AlgExp, val_var: Tree<string, int>) -> Maybe{
 	switch(expr){
+		AlgPlus(lhs, rhs) :{
+			mlhs = alg2i(lhs, val_var);
+			mrhs = alg2i(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				Some(either(mlhs, 0) + either(mrhs, 0));
+			} else {
+				None();
+			}
+		} 
+		AlgMult(lhs, rhs) :{
+			mlhs = alg2i(lhs, val_var);
+			mrhs = alg2i(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				Some(either(mlhs, 0) * either(mrhs, 0));
+			} else {
+				None();
+			}
+		}
+		AlgInt(val) :
+			Some(val);
+		AlgVar(var) : 
+			lookupTree(val_var, var);
+	}
+}
+
+
+
+/*
+alg2i (expr : AlgExp, val_var: Tree<string, int>) -> Maybe{
+	switch(expr){
 		ArPlus(lhs, rhs) :{
 			mlhs = alg2i(lhs, val_var);
 			mrhs = alg2i(rhs, val_var);
@@ -57,10 +87,18 @@ alg2i (expr : AlgExp, val_var: Tree<string, int>) -> Maybe{
 			lookupTree(val_var, var);
 	}
 }
+*/
 
 main(){
 	test = AlgPlus(AlgVar("hello"), AlgPlus(AlgVar("world"), AlgVar("!")));
 	println(algExp2s(test));
 	
 	println(s2Exp("((2+5)*aBc)"));
+	
+	testAlg = AlgMult(AlgVar("a"), AlgInt(5));
+	
+	println(alg2i(testAlg, makeTree()));
+	
+	testAlg2 = AlgMult(AlgInt(3), AlgInt(5));
+	println(alg2i(testAlg2, makeTree()));
 }
