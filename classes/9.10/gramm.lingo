@@ -1,0 +1,7 @@
+S = plus | mult | int | var;
+plus = "(" S:l "+" S:r ")" {AlgPlus(:l, :r)};
+mult = "(" S:l "*" S:r ")" {AlgMult(:l, :r)};
+int = digit + $s {AlgInt(s2i($s))};
+digit = '0' - '9';
+var = letter + $l {AlgVar($l)};
+letter = 'a'-'z' | 'A'-'Z';

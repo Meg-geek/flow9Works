@@ -96,8 +96,10 @@ main(){
 	println(s2Exp("((2+5)*aBc)"));
 	
 	testAlg = AlgMult(AlgVar("a"), AlgInt(5));
+	testTree = setTree(makeTree(), "a", 1);
 	
 	println(alg2i(testAlg, makeTree()));
+	println(alg2i(testAlg, testTree));
 	
 	testAlg2 = AlgMult(AlgInt(3), AlgInt(5));
 	println(alg2i(testAlg2, makeTree()));
