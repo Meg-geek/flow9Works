@@ -1,0 +1,267 @@
+import runtime;
+import string;
+import maybe;
+import lingo/pegcode/driver;
+import ds/tree;
+import math/math;
+
+AlgExp ::= AlgPlus, AlgMult, AlgVar, AlgInt, AlgDiv, AlgMinus, AlgUnMin;
+
+AlgUnMin(
+	var : AlgExp
+);
+
+AlgMinus(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgDiv(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgPlus(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgMult(
+	lhs : AlgExp,
+	rhs : AlgExp
+);
+
+AlgVar(
+	var : string
+);
+
+AlgInt(
+	val : int
+);
+
+RatNum(
+	num : int,
+	denom : int
+);
+
+ratPlus(left : RatNum, right : RatNum) -> RatNum{
+	newNum = left.num * right.denom + right.num * left.denom;
+	newDenom = left.denom * right.denom;
+	RatNum(newNum/gcd(newDenom, newNum), newDenom/gcd(newDenom, newNum));
+}
+
+ratMinus(left : RatNum, right : RatNum) -> RatNum{
+	newNum = left.num * right.denom - right.num * left.denom;
+	newDenom = left.denom * right.denom;
+	RatNum(newNum/gcd(newDenom, newNum), newDenom/gcd(newDenom, newNum));
+}
+
+ratMult(left : RatNum, right : RatNum) -> RatNum{
+	newNum = left.num * right.num;
+	newDenom = left.denom * right.denom;
+	RatNum(newNum/gcd(newDenom, newNum), newDenom/gcd(newDenom, newNum));
+}
+
+ratDiv(left : RatNum, right : RatNum) -> RatNum{
+	newNum = left.num * right.denom;
+	newDenom = left.denom * right.num;
+	RatNum(newNum/gcd(newDenom, newNum), newDenom/gcd(newDenom, newNum));
+}
+
+ratUnMin(arg : RatNum) -> RatNum{
+	RatNum(-arg.num, arg.denom);
+}
+
+alg2rat(expr : AlgExp, val_var : Tree<string, int>) -> Maybe<RatNum>{
+	switch(expr) {
+		AlgPlus(lhs, rhs) :{
+			mlhs = alg2rat(lhs, val_var);
+			mrhs = alg2rat(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				left = either(mlhs, RatNum(0 , 1));
+				right = either(mrhs, RatNum(0, 1));
+				Some(ratPlus(left, right));
+			} else {
+				None();
+			}
+		} 
+		AlgMult(lhs, rhs) :{
+			mlhs = alg2rat(lhs, val_var);
+			mrhs = alg2rat(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				left = either(mlhs, RatNum(0 , 1));
+				right = either(mrhs, RatNum(0, 1));
+				Some(ratMult(left, right));
+			} else {
+				None();
+			}
+		}
+		AlgInt(val) :
+			Some(RatNum(val, 1));
+		AlgVar(var) : {
+			val = lookupTree(val_var, var);
+			if(isSome(val)){
+				Some(RatNum(either(val, 0), 1));
+			} else {
+				None();
+			}
+		}
+		AlgMinus(lhs, rhs) :{
+			mlhs = alg2rat(lhs, val_var);
+			mrhs = alg2rat(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				left = either(mlhs, RatNum(0 , 1));
+				right = either(mrhs, RatNum(0, 1));
+				Some(ratMinus(left, right));
+			} else {
+				None();
+			}
+		}
+		AlgDiv(lhs, rhs) :{
+			mlhs = alg2rat(lhs, val_var);
+			mrhs = alg2rat(rhs, val_var);
+			if(isSome(mlhs) && isSome(mrhs)){
+				left = either(mlhs, RatNum(0 , 1));
+				right = either(mrhs, RatNum(0, 1));
+				Some(ratDiv(left, right));
+			} else {
+				None();
+			}
+		}
+		AlgUnMin(var) :{
+			rat = alg2rat(var, val_var);
+			if(isSome(rat)){
+				Some(ratUnMin(either(rat, RatNum(0, 1))));
+			} else {
+				None();
+			}
+		}
+	}
+}
+
+algExp2s(expr : AlgExp) -> string {
+	switch(expr){
+		AlgPlus(lhs, rhs) : 
+			concatStrings(["(", algExp2s(lhs), "+", algExp2s(rhs), ")"]);
+		AlgMult(lhs, rhs) :
+			concatStrings(["(", algExp2s(lhs), "*", algExp2s(rhs), ")"]);
+		AlgInt(val) :
+			i2s(val);
+		AlgVar(var):
+			var;
+		AlgDiv(lhs, rhs) : 
+			concatStrings(["(", algExp2s(lhs), "/", algExp2s(rhs), ")"]);
+		AlgMinus(lhs, rhs) : 
+			concatStrings(["(", algExp2s(lhs), "-", algExp2s(rhs), ")"]);
+		AlgUnMin(var) : 
+			concatStrings(["(", "-", algExp2s(var), ")"]);
+	}
+}
+
+s2Exp(s : string) -> AlgExp{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+diff(expr : AlgExp, varDif : string) -> AlgExp{
+	switch(expr){
+		AlgPlus(lhs, rhs) : 
+			AlgPlus(diff(lhs, varDif), diff(rhs, varDif));
+		AlgMult(lhs, rhs) : {
+			AlgPlus(AlgMult(diff(lhs, varDif), rhs),
+					AlgMult(lhs, diff(rhs, varDif)));
+		}
+		AlgInt(val) :
+			AlgInt(0);
+		AlgVar(var): {
+			if(var == varDif){
+				AlgInt(1);
+			} else {
+				AlgInt(0);
+			}
+		}
+		AlgDiv(lhs, rhs) : {
+			AlgDiv(AlgMinus(AlgMult(diff(lhs, varDif), rhs), AlgMult(lhs, diff(rhs, varDif))), 
+			AlgMult(rhs, rhs));
+		}
+		AlgMinus(lhs, rhs) : 
+			AlgMinus(diff(lhs, varDif), diff(rhs, varDif));
+		AlgUnMin(var) : 
+			AlgUnMin(diff(var, varDif));
+	}
+}
+
+simplify(expr : AlgExp) -> AlgExp {
+	switch(expr){
+		AlgPlus(lhs, rhs) : {
+			if(lhs == AlgInt(0)) {
+				simplify(rhs);
+			} else if (rhs == AlgInt(0)){
+				simplify(lhs);
+			} else {
+				AlgPlus()
+			}
+		} 
+		AlgMult(lhs, rhs) : {
+			if(lhs == AlgInt(0) || rhs == AlgInt(0)){
+				AlgInt(0);
+			} else {
+				AlgMult(lhs, rhs);
+			}
+		}
+		AlgInt(val) :
+			AlgInt(val);
+		AlgVar(var): 
+			AlgVar(var);
+		AlgDiv(lhs, rhs) : {
+			if (lhs == AlgInt(0)){
+				AlgInt(0);
+			} else {
+				AlgDiv(simplify(lhs), simplify(rhs));
+			}
+		}
+		AlgMinus(lhs, rhs) : 
+			AlgMinus(diff(lhs, varDif), diff(rhs, varDif));
+		AlgUnMin(var) : {
+			if(var == AlgInt(0)){
+				AlgInt(0);
+			} else {
+				AlgUnMin(simplify(var));
+			}
+		}
+	}
+}
+
+main(){
+	test1 = AlgDiv(AlgInt(1), AlgInt(2));
+	println(algExp2s(test1));
+	println(alg2rat(test1, makeTree()));
+	println("\n");
+	
+	test2 = AlgPlus(test1, AlgDiv(AlgInt(1), AlgInt(2)));
+	println(algExp2s(test2));
+	println(alg2rat(test2, makeTree()));
+	println("\n");
+	
+	test3 = AlgDiv(AlgVar("a"), test2);
+	println(algExp2s(test3));
+	println(alg2rat(test3, makeTree()));
+	println("\n");
+	
+	testTree = setTree(makeTree(), "a", 5);
+	println("same, a = 5");
+	println(alg2rat(test3, testTree));
+	println("\n");
+	
+	println("diff");
+	testDif = AlgPlus(AlgMult(AlgInt(3), AlgVar("x")), AlgInt(2));
+	println(algExp2s(testDif));
+	println(algExp2s(diff(testDif, "x")));
+	println(algExp2s(diff(testDif, "y")));
+	println("\n");
+	
+	testDif2 = AlgDiv(AlgMult(AlgInt(3), AlgVar("x")), AlgInt(2));
+	println(algExp2s(testDif2));
+	println(algExp2s(diff(testDif2, "x")));
+	println("\n");
+}
