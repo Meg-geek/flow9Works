@@ -194,19 +194,27 @@ diff(expr : AlgExp, varDif : string) -> AlgExp{
 simplify(expr : AlgExp) -> AlgExp {
 	switch(expr){
 		AlgPlus(lhs, rhs) : {
-			if(lhs == AlgInt(0)) {
-				simplify(rhs);
-			} else if (rhs == AlgInt(0)){
-				simplify(lhs);
+			sLhs = simplify(lhs);
+			sRhs = simplify(rhs);
+			if(sLhs == AlgInt(0) && sRhs == AlgInt(0)){
+				AlgInt(0);
+			} else 
+			if(sLhs == AlgInt(0)){
+				sRhs;
+			} else 
+			if(sRhs == AlgInt(0)){
+				sLhs;
 			} else {
-				AlgPlus()
+				AlgPlus(sLhs, sRhs);
 			}
 		} 
 		AlgMult(lhs, rhs) : {
-			if(lhs == AlgInt(0) || rhs == AlgInt(0)){
+			sLhs = simplify(lhs);
+			sRhs = simplify(rhs);
+			if(sLhs == AlgInt(0) || sRhs == AlgInt(0)){
 				AlgInt(0);
 			} else {
-				AlgMult(lhs, rhs);
+				AlgMult(sLhs, sRhs);
 			}
 		}
 		AlgInt(val) :
@@ -220,19 +228,34 @@ simplify(expr : AlgExp) -> AlgExp {
 				AlgDiv(simplify(lhs), simplify(rhs));
 			}
 		}
-		AlgMinus(lhs, rhs) : 
-			AlgMinus(diff(lhs, varDif), diff(rhs, varDif));
+		AlgMinus(lhs, rhs) : {
+			sLhs = simplify(lhs);
+			sRhs = simplify(rhs);
+			if(sLhs == AlgInt(0) && sRhs == AlgInt(0)){
+				AlgInt(0);
+			} else 
+			if(sLhs == AlgInt(0)){
+				AlgUnMin(sRhs);
+			} else 
+			if(sRhs == AlgInt(0)){
+				sLhs;
+			} else {
+				AlgPlus(sLhs, sRhs);
+			}
+		}
 		AlgUnMin(var) : {
-			if(var == AlgInt(0)){
+			sVar = simplify(var);
+			if(sVar == AlgInt(0)){
 				AlgInt(0);
 			} else {
-				AlgUnMin(simplify(var));
+				AlgUnMin(sVar);
 			}
 		}
 	}
 }
 
 main(){
+
 	test1 = AlgDiv(AlgInt(1), AlgInt(2));
 	println(algExp2s(test1));
 	println(alg2rat(test1, makeTree()));
@@ -257,11 +280,26 @@ main(){
 	testDif = AlgPlus(AlgMult(AlgInt(3), AlgVar("x")), AlgInt(2));
 	println(algExp2s(testDif));
 	println(algExp2s(diff(testDif, "x")));
+	println("simplify : ");
+	println(algExp2s(simplify(diff(testDif, "x"))));
 	println(algExp2s(diff(testDif, "y")));
+	println("simplify : ");
+	println(algExp2s(simplify(diff(testDif, "y"))));
 	println("\n");
 	
 	testDif2 = AlgDiv(AlgMult(AlgInt(3), AlgVar("x")), AlgInt(2));
 	println(algExp2s(testDif2));
 	println(algExp2s(diff(testDif2, "x")));
 	println("\n");
+	
+	testDif3 = AlgMult(AlgPlus(AlgVar("x"), AlgInt(5)),AlgMinus(AlgVar("x"), AlgInt(1)));
+	println(algExp2s(testDif3));
+	println(algExp2s(simplify(diff(testDif3, "x"))));
+	println("\n");
+	
+	simplifyTest = AlgMinus(AlgMult(AlgInt(0), AlgInt(0)), AlgMult(AlgInt(0), AlgInt(0)));
+	println(algExp2s(simplifyTest));
+	println(algExp2s(simplify(simplifyTest)));
+	
+	println(s2Exp(algExp2s(simplifyTest)));
 }
