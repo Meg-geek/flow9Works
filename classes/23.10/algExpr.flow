@@ -71,7 +71,7 @@ RatFunc(
 );
 //сумма
 PolySum(
-	sum : Tree<PolyProd, RatNum>
+	sum : Tree<PolyProd, int>
 );
 //произведение
 PolyProd(
@@ -79,12 +79,17 @@ PolyProd(
 );
 
 multPolySum(lhs : PolySum, rhs : PolySum) -> PolySum{
-	
+	foldTree(lhs.sum, makeTree(), \ polyProd, val1, acc -> {
+		foldTree(rhs.sum, makeTree(), \polyProd2, val2, iacc - > {
+			mergeTreeCustom(polyProd, polyProd2, 
+			\ )
+		})
+	})
 }
 
 plusPolySum(polySum1 : PolySum, polySum2 : PolySum) -> PolySum{
 	PolySum (mergeTreeCustom(polySum1.sum, polySum2.sum,
-		\prod, num1, num2 -> ratPlus(num1, num2)))
+		\prod, num1, num2 -> num1 + num2))
 }
 
 sumRatF(lhs : RatFunc, rhs : RatFunc) -> RatFunc {
