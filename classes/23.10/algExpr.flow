@@ -113,8 +113,18 @@ multRatF(lhs : RatFunc, rhs : RatFunc) -> RatFunc{
 			multPolySum(lhs.den, rhs.den))
 }
 
+unMinPolySum(expr : PolySum) -> PolySum {
+	PolySum(mapTree(expr.sum, \val -> -val))
+}
 
-/*
+minusRatF(lhs : RatFunc, rhs : RatFunc) -> RatFunc{
+	sumRatF(lhs, RatFunc(unMinPolySum(rhs.num), rhs.den))
+}
+
+divRatF(lhs : RatFunc, rhs : RatFunc) -> RatFunc{
+	multRatF(lhs, RatFunc(rhs.den, rhs.num))
+}
+
 alg2ratF(expr: AlgExp) -> RatFunc {
 	switch(expr){
 		AlgPlus(lhs, rhs) :{
@@ -124,23 +134,33 @@ alg2ratF(expr: AlgExp) -> RatFunc {
 			multRatF(alg2ratF(lhs), alg2ratF(rhs))
 		}
 		AlgInt(val) :{
-			
+			RatFunc(
+				PolySum(setTree(makeTree(), PolyProd(makeTree()), val)),
+				PolySum(setTree(makeTree(), PolyProd(makeTree()), 1))
+				)
 		}
 		AlgVar(var) :{
-			
+			RatFunc(
+				PolySum(setTree(makeTree(), PolyProd(setTree(makeTree(), var, 1)), 1)),
+				PolySum(setTree(makeTree(), PolyProd(makeTree()), 1))
+				)
 		}
 		AlgMinus(lhs, rhs) :{
-			
+			lhsF = alg2ratF(lhs);
+			rhsF = alg2ratF(rhs);
+			minusRatF(lhsF, rhsF)
 		}
 		AlgDiv(lhs, rhs) :{
-			
+			lhsF = alg2ratF(lhs);
+			rhsF = alg2ratF(rhs);
+			divRatF(lhsF, rhsF)
 		}
 		AlgUnMin(var) :{
-			
+			varF = alg2ratF(var);
+			RatFunc(unMinPolySum(varF.num), varF.den)
 		}
 	}
 }
-*/
 
 
 ratPlus(left : RatNum, right : RatNum) -> RatNum{
@@ -380,5 +400,16 @@ main(){
 	testPolySum2 = PolySum(setTree(polySum3.sum, PolyProd(setTree(makeTree(), "x", 1)), 4));
 	println(polySum2s(multPolySum(testPolySum1, testPolySum2)));
 	println(polySum2s(plusPolySum(testPolySum1, testPolySum2)));
+	
+	testIntSum = PolySum(setTree(makeTree(), PolyProd(setTree(makeTree(), "x", 1)), 1));
+	println(polySum2s(multPolySum(testIntSum, testIntSum)));
+	println(polySum2s(plusPolySum(testIntSum, testIntSum)));
+	println(polySum2s(unMinPolySum(testIntSum)));
+	
+	testRatF1 = alg2ratF(s2Exp("((((9*(x*x))-4)/((3*x)+2))-(3*x))"));
+	println("tests for ratF");
+	println(polySum2s(testRatF1.num));
+	println("-------------");
+	println(polySum2s(testRatF1.den));
 	
 }
