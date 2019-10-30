@@ -79,10 +79,20 @@ PolyProd(
 );
 
 multPolySum(lhs : PolySum, rhs : PolySum) -> PolySum{
-	foldTree(lhs.sum, makeTree(), \ polyProd, val1, acc -> {
-		foldTree(rhs.sum, makeTree(), \polyProd2, val2, iacc - > {
-			mergeTreeCustom(polyProd, polyProd2, 
-			\ )
+	foldTree(lhs.sum, PolySum(makeTree()), \ polyProd, val1, acc -> {
+		foldTree(rhs.sum, acc, \polyProd2, val2, iacc -> {
+			polyProdIn = PolyProd(
+				mergeTreeCustom(polyProd.prod, polyProd2.prod, 
+				\var, deg1, deg2 -> {
+					deg1 + deg2;
+				} )
+			);
+			switch(lookupTree(iacc.sum, polyProdIn)){
+				None():
+					PolySum( setTree(iacc.sum, polyProdIn, val1*val2) );
+				Some(val):
+					PolySum( setTree(iacc.sum, polyProdIn, val + val1*val2) );
+			}
 		})
 	})
 }
@@ -103,13 +113,15 @@ multRatF(lhs : RatFunc, rhs : RatFunc) -> RatFunc{
 			multPolySum(lhs.den, rhs.den))
 }
 
-alg2rat(expr: AlgExp) -> RatFunc {
+
+/*
+alg2ratF(expr: AlgExp) -> RatFunc {
 	switch(expr){
 		AlgPlus(lhs, rhs) :{
-			sumRatF(alg2rat(lhs), alg2rat(rhs))
+			sumRatF(alg2ratF(lhs), alg2ratF(rhs))
 		} 
 		AlgMult(lhs, rhs) :{
-			
+			multRatF(alg2ratF(lhs), alg2ratF(rhs))
 		}
 		AlgInt(val) :{
 			
@@ -128,6 +140,8 @@ alg2rat(expr: AlgExp) -> RatFunc {
 		}
 	}
 }
+*/
+
 
 ratPlus(left : RatNum, right : RatNum) -> RatNum{
 	newNum = left.num * right.denom + right.num * left.denom;
@@ -339,6 +353,32 @@ simplify(expr : AlgExp) -> AlgExp {
 	}
 }
 
+polySum2s(expr : PolySum) -> string{
+	foldTree(expr.sum, "", \polyProd, coef, acc -> {
+		prodString = foldTree(polyProd.prod, "", \var, deg, iacc -> {
+			if(deg > 1){
+				concatStrings([iacc, var, "^", i2s(deg)]);
+			} else {
+				concatStrings([iacc, var]);
+			}
+		});
+		if(acc == ""){
+			concatStrings([acc, i2s(coef), "*", prodString]);
+		} else {
+			concatStrings([acc, " + " ,i2s(coef), "*", prodString]);
+		}
+	})
+}
+
 main(){
+	polySum1 = PolySum(setTree(makeTree(), PolyProd(setTree(makeTree(), "x", 2)) , 3));
+	polySum2 = PolySum(setTree(makeTree(), PolyProd(setTree(makeTree(), "x", 6)) , 4));
+	println(polySum2s(multPolySum(polySum1, polySum2)));
+	
+	testPolySum1 = PolySum(setTree(polySum1.sum, PolyProd(setTree(makeTree(), "a", 1)), 4));
+	polySum3 = PolySum(setTree(makeTree(), PolyProd(setTree(makeTree(), "y", 1)) , 1));
+	testPolySum2 = PolySum(setTree(polySum3.sum, PolyProd(setTree(makeTree(), "x", 1)), 4));
+	println(polySum2s(multPolySum(testPolySum1, testPolySum2)));
+	println(polySum2s(plusPolySum(testPolySum1, testPolySum2)));
 	
 }
