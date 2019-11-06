@@ -1,4 +1,6 @@
-Decl = ws "var " var:name ":" ws Type:typeName ";" {Declaration(:name, :typeName)};
+Program = Decl*:decl Operators*:op {VMProgram(:decl, :op)};
+
+Decl = ws "var " var:name ":" ws Type:typeName ";" ws {Declaration(:name, :typeName)};
 Type = Var | Array;
 Var = "int" {Int()};
 Array = "[" ws Type:elType ws "]" {ArrayType(:elType)};
@@ -8,3 +10,29 @@ letter = 'a'-'z' | 'A'-'Z';
 ws = s*;
 s = " " | "\n" | "\t";
 
+Operators = ws number:label ws ":" ws Command:command ws ";" ws {VMOperator(:label, :command)}; 
+digit = '0' - '9';
+number = digit+ $s {s2i($s)};
+
+
+Command = Assign | ConditionOP | PrintOP;
+Assign = var:varName ws "=" ws Expr:expr " goto" ws "{" ws labels:goto ws "}" ws {Assignment(:varName, :expr, :goto)};
+
+labels = "" | numbers;
+numbers = number | numbers "," ws number;
+
+PrintOP = "print(" ws Expr:expr ws ")" ws " goto" ws  "{" ws labels:goto ws "}" ws {Print(:expr, :goto)};
+
+ConditionOP = "if(" ws Condition:cond ws ")" ws " then" ws " goto" ws  "{" ws labels:gotoThen ws "}" ws "else" ws " goto" ws  "{" ws labels:gotoElse ws "}" ws {ConditionOP(:cond, :gotoThen, :gotoElse)};
+
+Condition = Expr:lhs ws comparison:op ws Expr:rhs {Condition(:op, :lhs, :rhs)};
+
+comparison = "==" | "!=" | ">" | "<" | ">=" | "<=";
+
+Expr = number | var | App | Upd | BinOp;
+
+App = "app(" ws Expr:first "," ws Expr:second ws ")" {App(:first, :second)};
+Upd = "upd(" ws Expr:first "," ws Expr:second "," ws Expr:third ws ")" {Upd(:first, :second, :third)};
+
+BinOp = Expr:lhs ws operation:op ws Expr:rhs {BinOp(:op, :lhs, :rhs)};
+operation = "+" | "-" | "*" | "/" | "%";
