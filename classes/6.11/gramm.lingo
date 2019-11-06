@@ -1,0 +1,10 @@
+Decl = ws "var " var:name ":" ws Type:typeName ";" {Declaration(:name, :typeName)};
+Type = Var | Array;
+Var = "int" {Int()};
+Array = "[" ws Type:elType ws "]" {ArrayType(:elType)};
+var = letter+ $l {$l};
+letter = 'a'-'z' | 'A'-'Z';
+
+ws = s*;
+s = " " | "\n" | "\t";
+
