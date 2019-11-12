@@ -81,6 +81,27 @@ s2prog(s : string) -> VMProgram{
 	parsic(compilePegGrammar(gram), s, defaultPegActions)
 }
 
+getTestProgram() -> string{
+	concatStrings(["var x:int; var array :  [  int   ];", "12   : string = string goto {};", "   345: if(a < b) then goto{} else goto {1,2,   3, 4,5};", "3 : print (hello) goto { 222  };"])
+}
+
 main(){
-	println(s2prog("var array:[[int]];"));
+	println(s2prog("3: x = y goto {2, 2};"));
+	println("\n");
+	testDecl = "var x:int; var array :  [  int   ];";
+	testAssign = "12   : string = string goto {};";
+	testCond = "   345: if(a < b) then goto{} else goto {1,2,   3, 4,5};";
+	testPrint = "3 : print (hello) goto { 222  };";
+	testProgram = getTestProgram();
+	println(s2prog(testDecl));
+	println("\n");
+	println(s2prog(testAssign));
+	println("\n");
+	println(s2prog(testCond));
+	println("\n");
+	println(s2prog(testPrint));
+	println("\n");
+	println(s2prog(testProgram));
+	
+	testPrintBug = "3 : print (a+b) goto { 222  };";
 }
