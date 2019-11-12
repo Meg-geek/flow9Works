@@ -103,5 +103,7 @@ main(){
 	println("\n");
 	println(s2prog(testProgram));
 	
-	testPrintBug = "3 : print (a+b) goto { 222  };";
+	testPrintBug = "3 : print (a-b) goto { 222  };";
+	println("\n");
+	println(s2prog(testPrintBug));
 }

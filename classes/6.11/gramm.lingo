@@ -31,7 +31,9 @@ Condition = Expr:lhs ws comparison $s ws Expr:rhs ws {Condition($s, :lhs, :rhs)}
 
 comparison = "==" | "!=" | ">" | "<" | ">=" | "<=";
 
-Expr = numberExpr | varExpr | App | Upd | BinOp;
+
+endExpr = numberExpr | varExpr;
+Expr = App | Upd | BinOp | BinOp:lhs ws operation $s ws BinOp:rhs ws { BinOp($s, :lhs, :rhs)} | endExpr;
 
 numberExpr = number:numb {Constant(:numb)};
 varExpr = var:varName {Variable(:varName)};
@@ -40,5 +42,5 @@ varExpr = var:varName {Variable(:varName)};
 App = "app" ws "(" ws Expr:first "," ws Expr:second ws ")" {App(:first, :second)};
 Upd = "upd" ws "(" ws Expr:first "," ws Expr:second "," ws Expr:third ws ")" {Upd(:first, :second, :third)};
 
-BinOp = Expr:lhs ws operation $s ws Expr:rhs ws {BinOp($s, :lhs, :rhs)};
+BinOp = endExpr:lhs ws operation $s ws endExpr:rhs ws { BinOp($s, :lhs, :rhs)};
 operation = "+" | "-" | "*" | "/" | "%";
