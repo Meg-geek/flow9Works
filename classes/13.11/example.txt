@@ -1,0 +1,5 @@
+var x:int; 
+var array :  [  int   ];
+12   : string = string goto {};
+   345: if(a < b) then goto{} else goto {1,2,   3, 4,5};
+   3 : print (a-b) goto { 222  };

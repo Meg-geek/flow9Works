@@ -1,0 +1,156 @@
+import runtime;
+import lingo/pegcode/driver;
+import ds/set;
+import ds/array;
+
+ProgramState ::= EmptyState, State;
+
+EmptyState();
+
+State(
+	label : int,
+	varState : Tree<string, Val>
+);
+
+Val::=IntVal, ArrVal;
+
+IntVal(
+	val : int
+);
+
+ArrVal(
+	array : Tree<int, Val>
+);
+
+VMProgram (
+	operators : [VMOperator],
+	declarations : [Declaration]
+);
+
+VarType ::= ArrayType, Int;
+
+ArrayType(
+	elType : VarType
+);
+
+Int();
+
+Declaration(
+	name : string,
+	type : VarType
+);
+
+VMOperator(
+	label : int,
+	command : VMCommand
+);
+
+VMCommand ::= Assignment, ConditionOp, Print;
+
+Assignment(
+	varName : string,
+	expr : Expr,
+	goto : [int]
+);
+
+ConditionOp(
+	cond : Condition,
+	gotoThen : [int],
+	gotoElse : [int]
+);
+
+Print(
+	expr : Expr,
+	goto : [int]
+);
+
+BinOp(
+	op : string,
+	lhs : Expr,
+	rhs : Expr
+);
+
+Condition (
+	op : string,
+	lhs : Expr,
+	rhs : Expr
+);
+
+Expr ::= Constant, Variable, App, Upd, BinOp;
+
+Constant (
+	val : int
+);
+
+Variable (
+	name : string
+);
+
+App(
+	firstArg : Expr,
+	secondArg : Expr
+);
+
+Upd(
+	firstArg : Expr,
+	secondArg : Expr,
+	thirdArg : Expr
+);
+
+s2prog(s : string) -> VMProgram{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+execCommand(command : VMCommand, varState : Tree<string, Val>)
+
+getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->Set<ProgramState>{
+	switch (find(program.operators, \el -> {
+			el.label == label;
+		} )){
+		
+		None():
+			//println("State with label " + i2s(label) + " doesn't exist in program");
+			makeSet1(EmptyState());
+		Some(val):{
+			execCommand(val.command, varState);
+			switch(val.command){
+				Assignment(varName, expr, goto){
+					
+				}
+			}			
+		}
+	}
+}
+
+step(state : Set<ProgramState>)->Set<ProgramState>{
+	foldSet(state, makeSet(), \newSet, state -> {
+		switch(state){
+			EmptyState():
+				newSet;
+			State(label, varState):{
+				mergeSets(newSet, getNextStates(label, varState, program));
+			}
+		}
+	})
+}
+
+stepCheck(stateSet : Set<ProgramState>){
+	!forall(set2array(stateSet), \state -> {
+		switch(state){
+			EmptyState():
+				true;
+			State(label, varState):
+				false;
+		}
+	})
+}
+
+execVMProgram(program : VMProgram, firstState : ProgramState) -> Set<ProgramState>{
+	for(makeSet1(firstState), stepCheck, step)
+}
+
+
+main(){
+	println(s2prog(getFileContent("example.txt")));
+}
