@@ -148,10 +148,73 @@ printExpr(expr : Expr, varState : Tree<string, Val>) -> string{
 	}
 }
 
-getInt(expr : Expr) -> MayBe<int> {
+app(arrayExpr: Expr, index : int, varState : Tree<string, Val>) -> Maybe<int> {
+	switch(arrayExpr) {
+		Constant(number):
+			None();
+		Variable(name):
+		{
+			switch(lookupTree(varState, name)){
+				None():{
+					None();
+				}
+				Some(valType): {
+					switch(valType){
+						IntVal(arrayInt) :
+							None();
+						ArrVal(arrayArray):
+						{
+							switch(lookupTree(arrayArray, index)){
+								None():
+									None();
+								Some(arrayEl):
+								{
+									switch(arrayEl){
+										IntVal(el):
+											Some(el);
+										ArrVal(ar):
+											None();	
+									}
+								}	
+							}
+						}
+					}
+				}
+			}
+		}
+		App(firstArg, secondArg):
+			None();
+		Upd(firstArg, secondArg, thirdArg):
+			None();
+		BinOp(op, lhs, rhs):
+			None();
+	}
+}
+
+binOp(left: Maybe<int>, right: Maybe<int>, operation: string) -> Maybe<int> {
+	if(isNone(left) || isNone(right)){
+		None();
+	} else {
+		leftInt = either(left, 0);
+		rightInt = either(right, 0);
+		if(operation == "+"){
+			Some(leftInt + rightInt);
+		} else if(operation == "-"){
+			Some(leftInt - rightInt);
+		} else if(operation == "*"){
+			Some(leftInt * rightInt);
+		} else if(operation == "/"){
+			Some(leftInt / rightInt);
+		} else {
+			Some(leftInt % rightInt);
+		}
+	}
+}
+
+getInt(expr : Expr, varState : Tree<string, Val>) -> Maybe<int> {
 	switch(expr){
-		Constant(val):
-			Some(val);
+		Constant(number):
+			Some(number);
 		Variable(name):
 		{
 			switch(lookupTree(varState, name)){
@@ -159,25 +222,39 @@ getInt(expr : Expr) -> MayBe<int> {
 					None();
 				}
 				Some(val): {
-					getInt(val);
+					switch(val){
+						IntVal(el):
+							Some(el);
+						ArrVal(ar):
+							None();
+					}
 				}
 			}
 		}
 		App(firstArg, secondArg):
 		{
-
+			switch(getInt(secondArg, varState)){
+				None():
+					None();
+				Some(index):
+				{
+					app(firstArg, index, varState);
+				}
+			}
 		}
 		Upd(firstArg, secondArg, thirdArg):
 			None();
 		BinOp(op, lhs, rhs):
 		{
-			
+			left = getInt(lhs, varState);
+			right = getInt(rhs, varState);
+			binOp(left, right, op);
 		}
 	}
 }
 
 checkCond(cond: Condition, varState : Tree<string, Val>) -> bool {
-
+	true;
 }
 
 execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
