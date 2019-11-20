@@ -254,14 +254,37 @@ getInt(expr : Expr, varState : Tree<string, Val>) -> Maybe<int> {
 }
 
 checkCond(cond: Condition, varState : Tree<string, Val>) -> bool {
-	true;
+	left = getInt(cond.lhs, varState);
+	right = getInt(cond.rhs, varState);
+	if(isNone(left) || isNone(right)){
+		false;
+	} else {
+		leftInt = either(left, 0);
+		rightInt = either(right, 0);
+		if(cond.op == "=="){
+			leftInt == rightInt;
+		} else if(cond.op == "!="){
+			(leftInt != rightInt);
+		} else if(cond.op == ">"){
+			(leftInt > rightInt);
+		} else if(cond.op == "<"){
+			(leftInt < rightInt);
+		} else if (cond.op == "<="){
+			(leftInt <= rightInt);
+		} else if(cond.op == ">="){
+			(leftInt >= rightInt);
+		} else {
+			false;
+		}
+	}
 }
 
 execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
 	switch(command){
 		Assignment(varName, expr, goto):
 		{
-					
+			
+			setFromgoto(goto, varState);
 		}
 		ConditionOp(cond, gotoThen, gotoElse):
 		{
@@ -293,9 +316,10 @@ getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->S
 	}
 }
 
+/*
 step(state : Set<ProgramState>)->Set<ProgramState>{
-	foldSet(state, makeSet(), \newSet, state -> {
-		switch(state){
+	foldSet(state, makeSet(), \newSet, newState -> {
+		switch(newState){
 			EmptyState():
 				newSet;
 			State(label, varState):{
@@ -303,7 +327,7 @@ step(state : Set<ProgramState>)->Set<ProgramState>{
 			}
 		}
 	})
-}
+}*/
 
 stepCheck(stateSet : Set<ProgramState>){
 	!forall(set2array(stateSet), \state -> {
@@ -317,7 +341,17 @@ stepCheck(stateSet : Set<ProgramState>){
 }
 
 execVMProgram(program : VMProgram, firstState : ProgramState) -> Set<ProgramState>{
-	for(makeSet1(firstState), stepCheck, step)
+	for(makeSet1(firstState), stepCheck, \state->{
+		foldSet(state, makeSet(), \newSet, newState -> {
+		switch(newState){
+			EmptyState():
+				newSet;
+			State(label, varState):{
+				mergeSets(newSet, getNextStates(label, varState, program));
+			}
+		}
+	})
+	})
 }
 
 
