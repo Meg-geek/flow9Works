@@ -2,6 +2,7 @@ import runtime;
 import lingo/pegcode/driver;
 import ds/set;
 import ds/array;
+import maybe;
 
 ProgramState ::= EmptyState, State;
 
@@ -147,6 +148,38 @@ printExpr(expr : Expr, varState : Tree<string, Val>) -> string{
 	}
 }
 
+getInt(expr : Expr) -> MayBe<int> {
+	switch(expr){
+		Constant(val):
+			Some(val);
+		Variable(name):
+		{
+			switch(lookupTree(varState, name)){
+				None():{
+					None();
+				}
+				Some(val): {
+					getInt(val);
+				}
+			}
+		}
+		App(firstArg, secondArg):
+		{
+
+		}
+		Upd(firstArg, secondArg, thirdArg):
+			None();
+		BinOp(op, lhs, rhs):
+		{
+			
+		}
+	}
+}
+
+checkCond(cond: Condition, varState : Tree<string, Val>) -> bool {
+
+}
+
 execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
 	switch(command){
 		Assignment(varName, expr, goto):
@@ -155,7 +188,11 @@ execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState
 		}
 		ConditionOp(cond, gotoThen, gotoElse):
 		{
-			
+			if(checkCond(cond, varState)){
+				setFromgoto(gotoThen, varState);
+			} else {
+				setFromgoto(gotoElse, varState);
+			}
 		}
 		Print(expr, goto):
 		{
