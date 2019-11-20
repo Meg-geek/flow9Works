@@ -102,7 +102,68 @@ s2prog(s : string) -> VMProgram{
 	parsic(compilePegGrammar(gram), s, defaultPegActions)
 }
 
-execCommand(command : VMCommand, varState : Tree<string, Val>)
+setFromgoto(goto : [int], varState : Tree<string, Val>)->Set<ProgramState>{
+	fold(goto, makeSet(), \statesSet, el -> {
+		insertSet(statesSet, State(el, varState));
+	})
+}
+
+printVal(val : Val) -> string{
+	switch(val){
+		IntVal(intVal):
+			i2s(intVal);
+		ArrVal(array):
+		{
+			concatStrings( [ foldTree(array, "[", \index, var, acc->{
+				concatStrings([acc, "\n", "index ", i2s(index), " : ", printVal(var)]);
+			}) , "]"]);
+		}
+	}
+}
+
+printExpr(expr : Expr, varState : Tree<string, Val>) -> string{
+	switch(expr){
+		Constant(val):
+			i2s(val);
+		Variable(name):
+		{
+			switch(lookupTree(varState, name)){
+				None():{
+					println("runtime error");
+					quit(-1);
+					concatStrings(["runtime error"]);
+				}
+				Some(val): {
+					printVal(val);
+				}
+			}
+		}
+		App(firstArg, secondArg):
+			concatStrings(["app(", printExpr(firstArg, varState), printExpr(secondArg, varState), ")"]);
+		Upd(firstArg, secondArg, thirdArg):
+			concatStrings(["app(", printExpr(firstArg, varState), printExpr(secondArg, varState), printExpr(thirdArg, varState), ")"]);
+		BinOp(op, lhs, rhs):
+			concatStrings([printExpr(lhs, varState), op, printExpr(rhs, varState)]);
+	}
+}
+
+execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
+	switch(command){
+		Assignment(varName, expr, goto):
+		{
+					
+		}
+		ConditionOp(cond, gotoThen, gotoElse):
+		{
+			
+		}
+		Print(expr, goto):
+		{
+			println(printExpr(expr, varState));
+			setFromgoto(goto, varState);
+		}
+	}
+}
 
 getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->Set<ProgramState>{
 	switch (find(program.operators, \el -> {
@@ -113,12 +174,7 @@ getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->S
 			//println("State with label " + i2s(label) + " doesn't exist in program");
 			makeSet1(EmptyState());
 		Some(val):{
-			execCommand(val.command, varState);
-			switch(val.command){
-				Assignment(varName, expr, goto){
-					
-				}
-			}			
+			execCommand(val.command, varState);			
 		}
 	}
 }
