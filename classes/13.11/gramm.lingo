@@ -29,7 +29,7 @@ ConditionOP = ws "if" ws "(" ws Condition:cond ws ")" ws "then" ws "goto" ws  "{
 
 Condition = Expr:lhs ws comparison $s ws Expr:rhs ws {Condition($s, :lhs, :rhs)};
 
-comparison = "==" | "!=" | ">" | "<" | ">=" | "<=";
+comparison = "==" | "!=" | ">=" | "<=" | ">" | "<";
 
 
 endExpr = numberExpr | varExpr;
