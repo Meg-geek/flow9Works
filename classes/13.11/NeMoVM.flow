@@ -279,12 +279,135 @@ checkCond(cond: Condition, varState : Tree<string, Val>) -> bool {
 	}
 }
 
+assign(varName : string, expr : Expr, varState : Tree<string, Val>)->Tree<string, Val>{
+	maybeVal = lookupTree(varState, varName); 
+	if(isNone(maybeVal)){
+		quit(-1);
+	}
+	val = either(maybeVal, ArrVal(makeTree()));
+	switch(expr){
+		Constant(number): {
+			switch(val){
+				IntVal(prevVal):{
+					setTree(varState, varName, IntVal(number));
+				}
+				ArrVal(array): {
+					println("assign types error");
+					quit(-1);
+					makeTree();
+				}
+			}
+		}
+		Variable(name):
+		{
+			maybeAssignVal = lookupTree(varState, name); 
+			if(isNone(maybeAssignVal)){
+				println("assign types error");
+				quit(-1);
+			}
+			assignVal = either(maybeAssignVal, ArrVal(makeTree()));
+			switch(val){
+				IntVal(prevVal):{
+					switch(assignVal){
+						IntVal(assignIntVal):
+							setTree(varState, varName, IntVal(assignIntVal));
+						ArrVal(assignArray): {
+							println("assign types error");
+							quit(-1);
+							makeTree();
+						}
+					}
+				}
+				ArrVal(array): {
+					switch(assignVal){
+						IntVal(assignIntVal): {
+							println("assign types error");
+							quit(-1);
+							makeTree();
+						}
+						ArrVal(assignArray):
+							setTree(varState, varName, ArrVal(assignArray));
+					}
+				}
+			}
+		}
+		App(firstArg, secondArg):
+		{
+			switch(val){
+				IntVal(intVal) : {
+					switch(getInt(expr, varState)){
+						None():  {
+							println("assign types error");
+							quit(-1);
+							makeTree();
+						}
+						Some(appVal):
+							setTree(varState, varName, IntVal(appVal));
+					}
+				}
+				ArrVal(arrayVal): {
+					println("assign types error");
+					quit(-1);
+					makeTree();
+				}
+			}
+		}
+		Upd(firstArg, secondArg, thirdArg): {
+			switch(val){
+				IntVal(intVal) : {
+					println("assign types error");
+					quit(-1);
+					makeTree();
+				}
+				ArrVal(arrayVal): {
+					switch(upd(Upd(firstArg, secondArg, thirdArg), varState)){
+						None(): {
+							println("assign types error");
+							quit(-1);
+							makeTree();
+						}
+						Some(updVal):
+							setTree(varState, varName, ArrVal(updVal));
+					}
+				}
+			}
+		}
+		BinOp(op, lhs, rhs):
+		{
+			left = getInt(lhs, varState);
+			right = getInt(rhs, varState);
+			switch(binOp(left, right, op)){
+				None():{
+					println("assign types error");
+					quit(-1);
+					makeTree();
+				}
+				Some(binOpRes):{
+				switch(val){
+					IntVal(prevVal):{
+						setTree(varState, varName, IntVal(binOpRes));
+					}
+					ArrVal(array): {
+						println("assign types error");
+						quit(-1);
+						makeTree();
+					}
+				}
+				}	
+			}
+		}
+	}
+}
+
+upd(expr: Upd, varState : Tree<string, Val>)->Maybe<Tree<int, Val>> {
+	None()
+}
+
 execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
 	switch(command){
 		Assignment(varName, expr, goto):
 		{
-			
-			setFromgoto(goto, varState);
+			setFromgoto(goto, assign(varName, expr, varState));
 		}
 		ConditionOp(cond, gotoThen, gotoElse):
 		{
