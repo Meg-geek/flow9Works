@@ -366,8 +366,8 @@ assign(varName : string, expr : Expr, varState : Tree<string, Val>)->Tree<string
 							quit(-1);
 							makeTree();
 						}
-						Some(updVal):
-							setTree(varState, varName, ArrVal(updVal));
+						Some(updArr):
+							setTree(varState, varName, updArr);
 					}
 				}
 			}
@@ -399,8 +399,66 @@ assign(varName : string, expr : Expr, varState : Tree<string, Val>)->Tree<string
 	}
 }
 
-upd(expr: Upd, varState : Tree<string, Val>)->Maybe<Tree<int, Val>> {
-	None()
+upd(expr: Upd, varState : Tree<string, Val>)->Maybe<ArrVal> {
+	firstArray = getArray(expr.firstArg, varState);
+	secondIndex = getInt(expr.secondArg, varState);
+	thirdInt = getInt(expr.thirdArg, varState);
+	thirdArray = getArray(expr.thirdArg, varState);
+	if(isNone(firstArray) || isNone(secondIndex)){
+		None();
+	} else if (isNone(thirdInt) && isNone(thirdArray)) {
+		None();
+	} else {
+		arr = either(firstArray, makeTree());
+		index = either(secondIndex, 0);
+		 if(isSome(thirdInt)){
+			 elInt = either(thirdInt, 0);
+			 Some(ArrVal(setTree(arr, index, IntVal(elInt))));
+		 } else{
+			elArr = either(thirdArray, makeTree());
+			Some(ArrVal(setTree(arr, index, ArrVal(elArr))));
+		 }
+	}
+}
+
+getArray(expr : Expr, varState : Tree<string, Val>) -> Maybe<Tree<int, Val>>{
+	switch(expr){
+		Constant(number):{
+			None();
+		}
+		Variable(name):
+		{
+			switch(lookupTree(varState, name)){
+				None():{
+					None();
+				}
+				Some(val): {
+					switch(val){
+						IntVal(el):
+							None();
+						ArrVal(ar):
+							Some(ar);
+					}
+				}
+			}
+		}
+		App(firstArg, secondArg):
+		{
+			None();
+		}
+		Upd(firstArg, secondArg, thirdArg):{
+			switch(upd(Upd(firstArg, secondArg, thirdArg), varState)){
+				None():
+					None();
+				Some(ar):
+					Some(ar.array);	
+			}
+		}	
+		BinOp(op, lhs, rhs):
+		{
+			None();
+		}
+	}
 }
 
 execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState>{
