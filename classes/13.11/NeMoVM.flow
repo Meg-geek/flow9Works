@@ -485,30 +485,17 @@ execCommand(command : VMCommand, varState : Tree<string, Val>)->Set<ProgramState
 
 getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->Set<ProgramState>{
 	switch (find(program.operators, \el -> {
-			el.label == label;
+			(el.label == label)
 		} )){
-		
-		None():
-			//println("State with label " + i2s(label) + " doesn't exist in program");
+		None(): {
+			println("State with label " + i2s(label) + " doesn't exist in program");
 			makeSet1(EmptyState());
+		}
 		Some(val):{
 			execCommand(val.command, varState);			
 		}
 	}
 }
-
-/*
-step(state : Set<ProgramState>)->Set<ProgramState>{
-	foldSet(state, makeSet(), \newSet, newState -> {
-		switch(newState){
-			EmptyState():
-				newSet;
-			State(label, varState):{
-				mergeSets(newSet, getNextStates(label, varState, program));
-			}
-		}
-	})
-}*/
 
 stepCheck(stateSet : Set<ProgramState>){
 	!forall(set2array(stateSet), \state -> {
@@ -537,5 +524,9 @@ execVMProgram(program : VMProgram, firstState : ProgramState) -> Set<ProgramStat
 
 
 main(){
-	println(s2prog(getFileContent("example.txt")));
+	vmProgr = s2prog(getFileContent("example.txt"));
+	println(vmProgr);
+	println("now exec..");
+	println("\n");
+	execVMProgram(vmProgr, State(0, makeTree()));
 }

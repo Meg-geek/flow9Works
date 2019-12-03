@@ -1,4 +1,4 @@
-Program = Decl*:decl ws Operators*:op {VMProgram(:decl, :op)};
+Program = Decl*:decl ws Operators*:op {VMProgram(:op, :decl)};
 
 Decl = ws "var " var:name ws ":" ws Type:typeName ";" ws {Declaration(:name, :typeName)};
 Type = Var | Array;
