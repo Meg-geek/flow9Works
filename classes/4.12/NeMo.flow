@@ -1,0 +1,90 @@
+import runtime;
+import lingo/pegcode/driver;
+import ds/set;
+import ds/array;
+import maybe;
+
+NeMoProgram(
+	declarations : [Declaration],
+	operators : [Operator]
+);
+
+
+VarType ::= ArrayType, Int;
+
+ArrayType(
+	elType : VarType
+);
+
+Int();
+
+Declaration(
+	name : string,
+	type : VarType
+);
+
+Operator ::= SeqExecution, NonDetermChoice, ProgramPart;
+
+SeqExecution(
+	operators : [Operator]
+);
+
+NonDetermChoice(
+	operators : [Operator]
+);
+
+ProgramPart ::= Assignment, Test, Print;
+
+Assignment(
+	varName : string,
+	expr : Expr
+);
+
+Test(
+	lhs : Expr,
+	rhs : Expr,
+	condition : string
+);
+
+Print(
+	expr : Expr 
+);
+
+Expr ::= Constant, Variable, App, Upd, BinOp;
+
+Constant (
+	val : int
+);
+
+Variable (
+	name : string
+);
+
+App(
+	firstArg : Expr,
+	secondArg : Expr
+);
+
+Upd(
+	firstArg : Expr,
+	secondArg : Expr,
+	thirdArg : Expr
+);
+
+BinOp(
+	op : string,
+	lhs : Expr,
+	rhs : Expr
+);
+
+
+s2prog(s : string) -> NeMoProgram{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+
+main(){
+	progr = s2prog(getFileContent("NeMoexample.txt"));
+	println(progr);
+}

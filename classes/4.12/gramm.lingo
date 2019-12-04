@@ -1,0 +1,42 @@
+Program = Decl*:decl ws Operators*:op {NeMoProgram(:decl, :op)};
+
+Decl = ws "var " var:name ws ":" ws Type:typeName ";" ws {Declaration(:name, :typeName)};
+Type = Var | Array;
+Var = "int" {Int()};
+Array = "[" ws Type:elType ws "]" {ArrayType(:elType)};
+var = letter+ $l {$l};
+letter = 'a'-'z' | 'A'-'Z';
+
+ws = s*;
+s = " " | "\n" | "\t" | "\r";
+
+digit = '0' - '9';
+number = digit+ $s {s2i($s)};
+
+Operators = SeqExec | NonDetermChoice | ProgramPart;
+
+SeqExec = ws "{" ws SeqExecOprators*:op ws "}" ws {SeqExecution(:op)};
+
+SeqExecOprators = ProgramPart:op ws ";" {Operator(:op)}| NonDetermChoice:op {Operator(:op)}| SeqExec:op {Operator(:op)};
+
+NonDetermChoice = ws "{" ws NonDetermOperators*:op ws "}" {NonDetermChoice(:op)};
+
+NonDetermOperators = Operators:op ws "U" {Operator(:op)};
+
+ProgramPart = Assignment | Test | Print;
+
+Assignment = ws var:varName ws "=" ws Expr:expr ws {Assignment(:varName, :expr)};
+
+Expr = App | Upd | BinOp | BinOp:lhs ws operation $s ws BinOp:rhs ws { BinOp($s, :lhs, :rhs)} | endExpr;
+App = "app" ws "(" ws Expr:first "," ws Expr:second ws ")" {App(:first, :second)};
+Upd = "upd" ws "(" ws Expr:first "," ws Expr:second "," ws Expr:third ws ")" {Upd(:first, :second, :third)};
+BinOp = endExpr:lhs ws operation $s ws endExpr:rhs ws { BinOp($s, :lhs, :rhs)};
+operation = "+" | "-" | "*" | "/" | "%";
+endExpr = numberExpr | varExpr;
+numberExpr = number:numb {Constant(:numb)};
+varExpr = var:varName {Variable(:varName)};
+
+Test = ws Expr:lhs ws comparison:cond ws Expr:rhs ws "?" {Test(:lhs, :rhs, :cond)}; 
+comparison = "==" | "!=" | ">=" | "<=" | ">" | "<";
+
+Print = ws "print" ws "(" ws Expr:expr ws ")" ws {Print(:expr)};
