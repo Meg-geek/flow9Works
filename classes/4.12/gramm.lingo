@@ -13,17 +13,20 @@ s = " " | "\n" | "\t" | "\r";
 digit = '0' - '9';
 number = digit+ $s {s2i($s)};
 
-Operators = SeqExec | NonDetermChoice | ProgramPart;
+Operators = SeqExec | NonDetermChoice | NonDetermIteration | ProgramPart;
+
+NonDetermIteration = ws "(" ws Operators:op ws ")" ws "*" ws {NonDetermIteration(:op)};
 
 SeqExec = ws "{" ws SeqExecOprators*:op ws "}" ws {SeqExecution(:op)};
 
-SeqExecOprators = ProgramPart:op ws ";" {Operator(:op)}| NonDetermChoice:op {Operator(:op)}| SeqExec:op {Operator(:op)};
+SeqExecOprators = ProgramPart:op ws ";" {:op}| NonDetermChoice:op {:op}| SeqExec:op {:op};
 
 NonDetermChoice = ws "{" ws NonDetermOperators*:op ws "}" {NonDetermChoice(:op)};
 
-NonDetermOperators = Operators:op ws "U" {Operator(:op)};
+NonDetermOperators = Operators:op ws u {:op};
+u = "U" | ws;
 
-ProgramPart = Assignment | Test | Print;
+ProgramPart = Test | Assignment | Print;
 
 Assignment = ws var:varName ws "=" ws Expr:expr ws {Assignment(:varName, :expr)};
 
@@ -36,7 +39,7 @@ endExpr = numberExpr | varExpr;
 numberExpr = number:numb {Constant(:numb)};
 varExpr = var:varName {Variable(:varName)};
 
-Test = ws Expr:lhs ws comparison:cond ws Expr:rhs ws "?" {Test(:lhs, :rhs, :cond)}; 
+Test = ws Expr:lhs ws comparison $s ws Expr:rhs ws "?" {Test(:lhs, :rhs, $s)}; 
 comparison = "==" | "!=" | ">=" | "<=" | ">" | "<";
 
 Print = ws "print" ws "(" ws Expr:expr ws ")" ws {Print(:expr)};
