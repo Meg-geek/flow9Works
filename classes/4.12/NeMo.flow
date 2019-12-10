@@ -23,7 +23,11 @@ Declaration(
 	type : VarType
 );
 
-Operator ::= SeqExecution, NonDetermChoice, ProgramPart;
+Operator ::= SeqExecution, NonDetermChoice, ProgramPart, NonDetermIteration;
+
+NonDetermIteration(
+	operator : Operator
+);
 
 SeqExecution(
 	operators : [Operator]
