@@ -1,0 +1,10 @@
+var x: int;
+var y : [int];
+var array : [[int]];
+
+x=y
+x==y?
+{
+array=x;
+array=upd(array, 0, upd(app(array, 0), 0, 1));
+}
