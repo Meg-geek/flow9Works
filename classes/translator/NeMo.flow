@@ -1,0 +1,341 @@
+import runtime;
+import lingo/pegcode/driver;
+import ds/set;
+import ds/array;
+import maybe;
+
+NeMoProgram(
+	declarations : [Declaration],
+	operators : [Operator]
+);
+
+
+VarType ::= ArrayType, Int;
+
+ArrayType(
+	elType : VarType
+);
+
+Int();
+
+Declaration(
+	name : string,
+	type : VarType
+);
+
+Operator ::= SeqExecution, NonDetermChoice, ProgramPart, NonDetermIteration;
+
+NonDetermIteration(
+	operator : Operator
+);
+
+SeqExecution(
+	operators : [Operator]
+);
+
+NonDetermChoice(
+	operators : [Operator]
+);
+
+ProgramPart ::= Assignment, Test, Print;
+
+Assignment(
+	varName : string,
+	expr : Expr
+);
+
+Test(
+	lhs : Expr,
+	rhs : Expr,
+	condition : string
+);
+
+Print(
+	expr : Expr 
+);
+
+Expr ::= Constant, Variable, App, Upd, BinOp;
+
+Constant (
+	val : int
+);
+
+Variable (
+	name : string
+);
+
+App(
+	firstArg : Expr,
+	secondArg : Expr
+);
+
+Upd(
+	firstArg : Expr,
+	secondArg : Expr,
+	thirdArg : Expr
+);
+
+BinOp(
+	op : string,
+	lhs : Expr,
+	rhs : Expr
+);
+
+
+s2prog(s : string) -> NeMoProgram{
+	gram = "#include gramm.lingo";
+	parsic(compilePegGrammar(gram), s, defaultPegActions)
+}
+
+checkIfEqualsTypes(first : VarType, second : VarType) -> bool {
+	switch(first){
+		Int():{
+			switch(second){
+				Int():
+					true;
+				ArrayType(elType):
+					false;	
+			}
+		}
+		ArrayType(elTypeFirst) : {
+			switch(second){
+				Int():
+					false;
+				ArrayType(elTypeSecond):
+					checkIfEqualsTypes(elTypeFirst, elTypeSecond);	
+			}
+		}
+	}
+}
+
+getVariableType(varName : string, declarations : [Declaration]) -> VarType{
+	maybeVarType = fold(declarations, None(), \maybeType, el-> {
+		if(el.name == varName){
+			Some(el.type);
+		} else {
+			maybeType;
+		}
+	});
+	switch(maybeVarType){
+		None():{
+			println("variable " + varName + "hasn't been declared in program");
+			quit(-1);
+			Int();
+		}
+		Some(val):
+			val;
+	}
+}
+
+varType2s(type : VarType)->string{
+	switch(type){
+		Int():
+			"Int()";
+		ArrayType(elType):
+			"ArrayType( " + varType2s(elType) + " )";	
+	}
+}
+
+checkAppTypes(firstArgType : VarType, secondArgType : VarType) -> VarType{
+	switch(secondArgType){
+		Int():{
+
+		}
+		ArrayType(elType) : {
+			println("Wrong type of index in app, have : " + varType2s(secondArgType));
+			quit(-1);
+		}
+	}
+	switch(firstArgType){
+		Int():{
+			println("Wrong type of first argument in app, have : " + varType2s(firstArgType));
+			quit(-1);
+			Int();
+		}
+		ArrayType(elType) : {
+			elType;
+		}
+	}
+}
+
+checkUpdTypes(firstType : VarType, secondType : VarType, thirdType : VarType) -> VarType {
+	switch(secondType){
+		Int() : {
+
+		}
+		ArrayType(elType) : {
+			println("Wrong type in upd second argument, need int, have " + varType2s(secondType));
+			quit(-1);
+		}
+	}
+	switch(firstType) {
+		Int() : {
+			println("Wrong type in upd first argument, need ArrayType, have " + varType2s(firstType));
+			quit(-1);
+			Int();
+		}
+		ArrayType(elType) : {
+			if(checkIfEqualsTypes(elType, thirdType)){
+				firstType;
+			} else {
+				println("Wrong type in upd third argument, need " + varType2s(elType) + " have " + varType2s(thirdType));
+				quit(-1);
+				Int();
+			}
+		}
+	}
+}
+
+getExprType(expr : Expr, program : NeMoProgram) -> VarType {
+	switch(expr){
+		Constant(val) : {
+			Int();
+		}
+		Variable(name) : {
+			getVariableType(name, program.declarations);
+		}
+		BinOp(op, lhs, rhs) : {
+			leftType = getExprType(lhs, program);
+			rightType = getExprType(rhs, program);
+			if(checkIfEqualsTypes(leftType, rightType)){
+				leftType;
+			} else {
+				println("Wrong types in binary operation " + varType2s(leftType) + op + varType2s(rightType));
+				quit(-1);
+				Int();
+			}
+		}
+		App(firstArg, secondArg) : {
+			firstArgType = getExprType(firstArg, program);
+			secondArgType = getExprType(secondArg, program);
+			checkAppTypes(firstArgType, secondArgType);
+		}
+		Upd(first, second, third) : {
+			firstType = getExprType(first, program);
+			secondType = getExprType(second, program);
+			thirdType = getExprType(third, program);
+			checkUpdTypes(firstType, secondType, thirdType);
+		}
+	}
+}
+
+checkOperator(operator: Operator, program : NeMoProgram)->bool {
+	switch(operator){
+		Assignment(varName, expr): {
+			varType = getVariableType(varName, program.declarations);
+			exprType = getExprType(expr, program);
+			if(checkIfEqualsTypes(varType, exprType)){
+				true;
+			} else {
+				println("Types in Assignment are not equals, got: " + varType2s(varType) + " = " + varType2s(exprType));
+				quit(-1);
+				false;
+			}
+		}
+		Test(lhs, rhs, condition) : {
+			lhsType = getExprType(lhs, program);
+			rhsType = getExprType(rhs, program);
+			if(checkIfEqualsTypes(lhsType, rhsType)){
+				true;
+			} else {
+				println("Wrong types in test, got: " + varType2s(lhsType) + " " + condition + " " + varType2s(rhsType));
+				quit(-1);
+				false;
+			}
+		}
+		Print(expr) : {
+			getExprType(expr, program);
+			true;
+		}
+		SeqExecution(operators) : {
+			forall(map(operators, \operatorEl -> {checkOperator(operatorEl, program);}), \el-> {el == true;});
+		}
+		NonDetermChoice(operators) : {
+			forall(map(operators, \operatorEl -> {checkOperator(operatorEl, program);}), \el-> {el == true;});
+		}
+		NonDetermIteration(iterationOperator) : {
+			checkOperator(iterationOperator, program);
+		}
+	}
+}
+
+checkTypes(program : NeMoProgram) -> bool {
+	forall( map(program.operators, \operator->{
+		checkOperator(operator, program);
+	}), \el-> {el==true;});
+}
+
+expr2s(expr : Expr) -> string {
+	switch(expr){
+		Constant(val) : {
+			i2s(val);
+		}
+		Variable(name) : {
+			name;
+		}
+		BinOp(op, lhs, rhs) : {
+			expr2s(lhs) + op + expr2s(rhs);
+		}
+		App(firstArg, secondArg) : {
+			"app(" + expr2s(firstArg) + ", " + expr2s(secondArg) + ")";
+		}
+		Upd(first, second, third) : {
+			"upd(" + expr2s(first) + ", " + expr2s(second) + ", " + expr2s(third) + ")";
+		}
+	}
+}
+
+translateOperator(operator : Operator, beginLabel : int, fileToWritePath : string) -> int{
+	switch(operator){
+		Assignment(varName, expr): {
+			nextLabel = beginLabel + 1;
+			translatedText = i2s(beginLabel) + ": " + varName + " = " + expr2s(expr) + " goto {" + i2s(nextLabel) + "};";
+			setFileContent(fileToWritePath, translatedText);
+			nextLabel;
+		}
+		Test(lhs, rhs, condition) : {
+			nextLabel = beginLabel + 1;
+			translatedText = i2s(beginLabel) + ": " + "if( " + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
+			+ " goto {" + i2s(nextLabel) + "}" + "else {};";
+			setFileContent(fileToWritePath, translatedText);
+			nextLabel;
+		}
+		Print(expr) : {
+			nextLabel = beginLabel + 1;
+			translatedText = i2s(beginLabel) + ": " + "print(" + expr2s(expr) + ")" + " goto {" + i2s(nextLabel) + "};";
+			setFileContent(fileToWritePath, translatedText);
+			nextLabel;
+		}
+		SeqExecution(operators) : {
+			fold(operators, beginLabel, \curLabel, elOperator -> {
+				translateOperator(elOperator, curLabel, fileToWritePath);
+			})
+		}
+		NonDetermChoice(operators) : {
+			4
+		}
+		NonDetermIteration(iterationOperator) : {
+			5
+		}
+	}
+}
+
+//setFileContent() писать в файл
+tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> int {
+	fold(program.operators, 0, \curLabel, operator -> {
+		translateOperator(operator, curLabel, fileToWritePath)
+	})
+}
+
+
+main(){
+	progr = s2prog(getFileContent("NeMoProgram.txt"));
+	println("start types checking...\n");
+	if(checkTypes(progr)){
+		println("everything's alright\n");
+		println("start translation...\n");
+		println(tranlsateNeMoProgram(progr, "VNeMoTranslated.txt"));
+	} else {
+		println("NeMo program has some types mistakes\n");
+	}
+}
