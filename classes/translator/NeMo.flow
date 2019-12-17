@@ -279,7 +279,7 @@ expr2s(expr : Expr) -> string {
 			name;
 		}
 		BinOp(op, lhs, rhs) : {
-			expr2s(lhs) + op + expr2s(rhs);
+			expr2s(lhs) + " " + op + " " + expr2s(rhs);
 		}
 		App(firstArg, secondArg) : {
 			"app(" + expr2s(firstArg) + ", " + expr2s(secondArg) + ")";
@@ -314,7 +314,22 @@ translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -
 			})
 		}
 		NonDetermChoice(operators) : {
-			TranslationStep("", 0)
+			stepsArray = fold(operators, [TranslationStep(beginTranslationStep.translatedText, beginTranslationStep.maxLabel + 1)], 
+				\curStep, elOperator -> {
+					operatorStep = translateOperator(elOperator, curStep[length(curStep)-1]);
+					concat(curStep, [TranslationStep(operatorStep.translatedText, operatorStep.maxLabel + 1)]);
+				});
+			nextLabelsArray = fold(stepsArray, [], 
+				\curArray, step->{
+					concat(curArray, [step.maxLabel]);
+				});
+			translatedNonDetermChoice = i2s(beginTranslationStep.maxLabel) + ": if(1 == 1) then goto {" +
+				fold(take(nextLabelsArray, length(nextLabelsArray) - 1), "", \curString, label -> {
+					curString + i2s(label) + ", ";
+				}) + i2s(nextLabelsArray[length(nextLabelsArray) - 1]) + "} else goto {};\n";
+			lastStep = stepsArray[length(stepsArray) - 1];
+			TranslationStep(lastStep.translatedText + translatedNonDetermChoice, lastStep.maxLabel);
+			//TranslationStep("", 0);
 		}
 		NonDetermIteration(iterationOperator) : {
 			nextLabel = beginTranslationStep.maxLabel + 1;
@@ -324,7 +339,7 @@ translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -
 			+ ", " + i2s(translationStepOperatorTranslated.maxLabel + 1) + "} else goto {};\n" 
 			+ i2s(translationStepOperatorTranslated.maxLabel) + ": if(1==1) then goto {" + i2s(beginTranslationStep.maxLabel) + "} else goto {};\n" ;
 			TranslationStep(translationStepOperatorTranslated.translatedText + translatedNonDetermIterationText, 
-							translationStepOperatorTranslated.maxLabel);
+							translationStepOperatorTranslated.maxLabel + 1);
 		}
 	}
 }
@@ -346,7 +361,7 @@ decl2s(declarations : [Declaration]) -> string{
 
 tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> bool {
 	setFileContent(fileToWritePath, 
-	decl2s(program.declarations) + 
+	decl2s(program.declarations) + "\n" +
 	fold(program.operators, TranslationStep("", 0), 
 	\curTranslationStep, operator -> {
 		translateOperator(operator, curTranslationStep)
@@ -357,6 +372,7 @@ tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> bool {
 
 main(){
 	progr = s2prog(getFileContent("NeMoProgram.txt"));
+	println(progr);
 	println("start types checking...\n");
 	if(checkTypes(progr)){
 		println("everything's alright\n");
