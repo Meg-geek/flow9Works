@@ -4,6 +4,11 @@ import ds/set;
 import ds/array;
 import maybe;
 
+TranslationStep(
+	translatedText : string,
+	maxLabel : int
+);
+
 NeMoProgram(
 	declarations : [Declaration],
 	operators : [Operator]
@@ -285,46 +290,68 @@ expr2s(expr : Expr) -> string {
 	}
 }
 
-translateOperator(operator : Operator, beginLabel : int, fileToWritePath : string) -> int{
+translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -> TranslationStep{
 	switch(operator){
 		Assignment(varName, expr): {
-			nextLabel = beginLabel + 1;
-			translatedText = i2s(beginLabel) + ": " + varName + " = " + expr2s(expr) + " goto {" + i2s(nextLabel) + "};";
-			setFileContent(fileToWritePath, translatedText);
-			nextLabel;
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedAssignmentText = i2s(beginTranslationStep.maxLabel) + ": " + varName + " = " + expr2s(expr) + " goto {" + i2s(nextLabel) + "};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedAssignmentText, nextLabel);
 		}
 		Test(lhs, rhs, condition) : {
-			nextLabel = beginLabel + 1;
-			translatedText = i2s(beginLabel) + ": " + "if( " + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
-			+ " goto {" + i2s(nextLabel) + "}" + "else {};";
-			setFileContent(fileToWritePath, translatedText);
-			nextLabel;
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedTestText = i2s(beginTranslationStep.maxLabel) + ": " + "if( " + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
+			+ " goto {" + i2s(nextLabel) + "}" + "else {};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedTestText, nextLabel);
 		}
 		Print(expr) : {
-			nextLabel = beginLabel + 1;
-			translatedText = i2s(beginLabel) + ": " + "print(" + expr2s(expr) + ")" + " goto {" + i2s(nextLabel) + "};";
-			setFileContent(fileToWritePath, translatedText);
-			nextLabel;
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedPrintText = i2s(beginTranslationStep.maxLabel) + ": " + "print(" + expr2s(expr) + ")" + " goto {" + i2s(nextLabel) + "};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedPrintText, nextLabel);
 		}
 		SeqExecution(operators) : {
-			fold(operators, beginLabel, \curLabel, elOperator -> {
-				translateOperator(elOperator, curLabel, fileToWritePath);
+			fold(operators, beginTranslationStep, \curStep, elOperator -> {
+				translateOperator(elOperator, curStep);
 			})
 		}
 		NonDetermChoice(operators) : {
-			4
+			TranslationStep("", 0)
 		}
 		NonDetermIteration(iterationOperator) : {
-			5
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translationStepOperatorTranslated = translateOperator(iterationOperator, 
+																TranslationStep(beginTranslationStep.translatedText, nextLabel));
+			translatedNonDetermIterationText = i2s(beginTranslationStep.maxLabel) + ": if(1==1) then goto {" + i2s(nextLabel) 
+			+ ", " + i2s(translationStepOperatorTranslated.maxLabel + 1) + "} else goto {};\n" 
+			+ i2s(translationStepOperatorTranslated.maxLabel) + ": if(1==1) then goto {" + i2s(beginTranslationStep.maxLabel) + "} else goto {};\n" ;
+			TranslationStep(translationStepOperatorTranslated.translatedText + translatedNonDetermIterationText, 
+							translationStepOperatorTranslated.maxLabel);
 		}
 	}
 }
 
-//setFileContent() писать в файл
-tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> int {
-	fold(program.operators, 0, \curLabel, operator -> {
-		translateOperator(operator, curLabel, fileToWritePath)
+varType2translS(type : VarType) -> string {
+	switch(type){
+		Int():
+			"int";
+		ArrayType(elType):
+			"[" + varType2translS(elType) + "]";	
+	}
+}
+
+decl2s(declarations : [Declaration]) -> string{
+	fold(declarations, "", \declString, declEl -> {
+		declString + "var " + declEl.name + " : " + varType2translS(declEl.type) + ";\n"; 
 	})
+}
+
+tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> bool {
+	setFileContent(fileToWritePath, 
+	decl2s(program.declarations) + 
+	fold(program.operators, TranslationStep("", 0), 
+	\curTranslationStep, operator -> {
+		translateOperator(operator, curTranslationStep)
+		}
+	).translatedText)
 }
 
 
