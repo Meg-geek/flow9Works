@@ -1,0 +1,428 @@
+import runtime;
+import lingo/pegcode/driver;
+import ds/set;
+import ds/array;
+import maybe;
+
+TranslationStep(
+	translatedText : string,
+	maxLabel : int
+);
+
+NeMoProgram(
+	declarations : [Declaration],
+	operators : [Operator]
+);
+
+
+VarType ::= ArrayType, Int;
+
+ArrayType(
+	elType : VarType
+);
+
+Int();
+
+Declaration(
+	name : string,
+	type : VarType
+);
+
+Operator ::= SeqExecution, NonDetermChoice, ProgramPart, NonDetermIteration;
+
+NonDetermIteration(
+	operator : Operator
+);
+
+SeqExecution(
+	operators : [Operator]
+);
+
+NonDetermChoice(
+	operators : [Operator]
+);
+
+ProgramPart ::= Assignment, Test, Print;
+
+Assignment(
+	varName : string,
+	expr : Expr
+);
+
+Test(
+	lhs : Expr,
+	rhs : Expr,
+	condition : string
+);
+
+Print(
+	expr : Expr 
+);
+
+Expr ::= Constant, Variable, App, Upd, BinOp;
+
+Constant (
+	val : int
+);
+
+Variable (
+	name : string
+);
+
+App(
+	firstArg : Expr,
+	secondArg : Expr
+);
+
+Upd(
+	firstArg : Expr,
+	secondArg : Expr,
+	thirdArg : Expr
+);
+
+BinOp(
+	op : string,
+	lhs : Expr,
+	rhs : Expr
+);
+
+Comparison(
+	original : string,
+	negation : string
+);
+
+getFullComparison(comparison : Comparison) -> Comparison{
+	if(comparison.original == "=="){
+		Comparison("==", "!=");
+	} else if(comparison.original == "!="){
+		Comparison("!=", "==");
+	} else if(comparison.original == ">"){
+		Comparison(">", "<=");
+	} else if(comparison.original == "<"){
+		Comparison("<", ">=");
+	} else if(comparison.original == "<="){
+		Comparison("<=", ">");
+	} else {
+		Comparison(">=", "<");
+	}
+}
+
+s2prog(s : string) -> NeMoProgram{
+	gram = "#include gramm.lingo";
+	treeWithIf = setTree(defaultPegActions.t, "createIf", 
+	\args -> {
+		comparison = getFullComparison(Comparison(flow2s(args[1]), ""));
+		NonDetermChoice( [SeqExecution([Test(args[0], args[2], args[1]), args[3]]), 
+                    SeqExecution([Test(args[0], args[2], comparison.negation), args[4]])] )
+	});
+	treeWithWhile = setTree(treeWithIf, "createWhile", 
+	\args -> {
+		comparison = getFullComparison(Comparison(flow2s(args[1]), ""));
+		SeqExecution([NonDetermIteration(SeqExecution([Test(args[0], args[2], args[1]), args[3]])),
+					Test(args[0], args[2], comparison.negation)])
+	});
+	parsic(compilePegGrammar(gram), s, SemanticActions(treeWithWhile));
+}
+
+checkIfEqualsTypes(first : VarType, second : VarType) -> bool {
+	switch(first){
+		Int():{
+			switch(second){
+				Int():
+					true;
+				ArrayType(elType):
+					false;	
+			}
+		}
+		ArrayType(elTypeFirst) : {
+			switch(second){
+				Int():
+					false;
+				ArrayType(elTypeSecond):
+					checkIfEqualsTypes(elTypeFirst, elTypeSecond);	
+			}
+		}
+	}
+}
+
+getVariableType(varName : string, declarations : [Declaration]) -> VarType{
+	maybeVarType = fold(declarations, None(), \maybeType, el-> {
+		if(el.name == varName){
+			Some(el.type);
+		} else {
+			maybeType;
+		}
+	});
+	switch(maybeVarType){
+		None():{
+			println("variable " + varName + " hasn't been declared in program");
+			quit(-1);
+			Int();
+		}
+		Some(val):
+			val;
+	}
+}
+
+varType2s(type : VarType)->string{
+	switch(type){
+		Int():
+			"Int()";
+		ArrayType(elType):
+			"ArrayType( " + varType2s(elType) + " )";	
+	}
+}
+
+checkAppTypes(firstArgType : VarType, secondArgType : VarType) -> VarType{
+	switch(secondArgType){
+		Int():{
+
+		}
+		ArrayType(elType) : {
+			println("Wrong type of index in app, have : " + varType2s(secondArgType));
+			quit(-1);
+		}
+	}
+	switch(firstArgType){
+		Int():{
+			println("Wrong type of first argument in app, have : " + varType2s(firstArgType));
+			quit(-1);
+			Int();
+		}
+		ArrayType(elType) : {
+			elType;
+		}
+	}
+}
+
+checkUpdTypes(firstType : VarType, secondType : VarType, thirdType : VarType) -> VarType {
+	switch(secondType){
+		Int() : {
+
+		}
+		ArrayType(elType) : {
+			println("Wrong type in upd second argument, need int, have " + varType2s(secondType));
+			quit(-1);
+		}
+	}
+	switch(firstType) {
+		Int() : {
+			println("Wrong type in upd first argument, need ArrayType, have " + varType2s(firstType));
+			quit(-1);
+			Int();
+		}
+		ArrayType(elType) : {
+			if(checkIfEqualsTypes(elType, thirdType)){
+				firstType;
+			} else {
+				println("Wrong type in upd third argument, need " + varType2s(elType) + " have " + varType2s(thirdType));
+				quit(-1);
+				Int();
+			}
+		}
+	}
+}
+
+getExprType(expr : Expr, program : NeMoProgram) -> VarType {
+	switch(expr){
+		Constant(val) : {
+			Int();
+		}
+		Variable(name) : {
+			getVariableType(name, program.declarations);
+		}
+		BinOp(op, lhs, rhs) : {
+			leftType = getExprType(lhs, program);
+			rightType = getExprType(rhs, program);
+			if(checkIfEqualsTypes(leftType, rightType)){
+				leftType;
+			} else {
+				println("Wrong types in binary operation " + varType2s(leftType) + op + varType2s(rightType));
+				quit(-1);
+				Int();
+			}
+		}
+		App(firstArg, secondArg) : {
+			firstArgType = getExprType(firstArg, program);
+			secondArgType = getExprType(secondArg, program);
+			checkAppTypes(firstArgType, secondArgType);
+		}
+		Upd(first, second, third) : {
+			firstType = getExprType(first, program);
+			secondType = getExprType(second, program);
+			thirdType = getExprType(third, program);
+			checkUpdTypes(firstType, secondType, thirdType);
+		}
+	}
+}
+
+checkOperator(operator: Operator, program : NeMoProgram)->bool {
+	switch(operator){
+		Assignment(varName, expr): {
+			varType = getVariableType(varName, program.declarations);
+			exprType = getExprType(expr, program);
+			if(checkIfEqualsTypes(varType, exprType)){
+				true;
+			} else {
+				println("Types in Assignment are not equals, got: " + varType2s(varType) + " = " + varType2s(exprType));
+				quit(-1);
+				false;
+			}
+		}
+		Test(lhs, rhs, condition) : {
+			lhsType = getExprType(lhs, program);
+			rhsType = getExprType(rhs, program);
+			if(checkIfEqualsTypes(lhsType, rhsType)){
+				true;
+			} else {
+				println("Wrong types in test, got: " + varType2s(lhsType) + " " + condition + " " + varType2s(rhsType));
+				quit(-1);
+				false;
+			}
+		}
+		Print(expr) : {
+			getExprType(expr, program);
+			true;
+		}
+		SeqExecution(operators) : {
+			forall(map(operators, \operatorEl -> {checkOperator(operatorEl, program);}), \el-> {el == true;});
+		}
+		NonDetermChoice(operators) : {
+			forall(map(operators, \operatorEl -> {checkOperator(operatorEl, program);}), \el-> {el == true;});
+		}
+		NonDetermIteration(iterationOperator) : {
+			checkOperator(iterationOperator, program);
+		}
+	}
+}
+
+checkTypes(program : NeMoProgram) -> bool {
+	forall( map(program.operators, \operator->{
+		checkOperator(operator, program);
+	}), \el-> {el==true;});
+}
+
+expr2s(expr : Expr) -> string {
+	switch(expr){
+		Constant(val) : {
+			i2s(val);
+		}
+		Variable(name) : {
+			name;
+		}
+		BinOp(op, lhs, rhs) : {
+			expr2s(lhs) + " " + op + " " + expr2s(rhs);
+		}
+		App(firstArg, secondArg) : {
+			"app(" + expr2s(firstArg) + ", " + expr2s(secondArg) + ")";
+		}
+		Upd(first, second, third) : {
+			"upd(" + expr2s(first) + ", " + expr2s(second) + ", " + expr2s(third) + ")";
+		}
+	}
+}
+
+translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -> TranslationStep{
+	switch(operator){
+		Assignment(varName, expr): {
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedAssignmentText = i2s(beginTranslationStep.maxLabel) + ": " + varName + " = " + expr2s(expr) + " goto {" + i2s(nextLabel) + "};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedAssignmentText, nextLabel);
+		}
+		Test(lhs, rhs, condition) : {
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedTestText = i2s(beginTranslationStep.maxLabel) + ": " + "if( " + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
+			+ " goto {" + i2s(nextLabel) + "}" + "else {};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedTestText, nextLabel);
+		}
+		Print(expr) : {
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translatedPrintText = i2s(beginTranslationStep.maxLabel) + ": " + "print(" + expr2s(expr) + ")" + " goto {" + i2s(nextLabel) + "};\n";
+			TranslationStep(beginTranslationStep.translatedText + translatedPrintText, nextLabel);
+		}
+		SeqExecution(operators) : {
+			fold(operators, beginTranslationStep, \curStep, elOperator -> {
+				translateOperator(elOperator, curStep);
+			})
+		}
+		NonDetermChoice(operators) : {
+			stepsArray = fold(operators, [], 
+				\curStepsArray, elOperator -> {
+					if(length(curStepsArray) == 0){
+						operatorStep = translateOperator(elOperator, TranslationStep("", beginTranslationStep.maxLabel + 1));
+						concat(curStepsArray, [operatorStep]);
+					} else {
+						operatorStep = translateOperator(elOperator, TranslationStep("", curStepsArray[length(curStepsArray)-1].maxLabel + 1));
+						concat(curStepsArray, [operatorStep]);
+					}
+				});
+			nextLabelsArray = fold(stepsArray, [], 
+				\curArray, step->{
+					concat(curArray, [step.maxLabel]);
+				});
+			translatedNonDetermChoice = i2s(beginTranslationStep.maxLabel) + ": if(1 == 1) then goto {" + 
+				i2s(beginTranslationStep.maxLabel + 1) + ", " + 
+				fold(take(nextLabelsArray, length(nextLabelsArray) - 1), "", \curString, label -> {
+					curString + i2s(label + 1) + ", ";
+				}) + "} else goto {};\n";
+			stepsWithoutLastArray = take(stepsArray, length(stepsArray) - 1);
+			lastLabel = stepsArray[length(stepsArray) - 1].maxLabel;
+			translatedOperators = fold(stepsWithoutLastArray, "", 
+			\curString, elStep -> {
+				curString + elStep.translatedText + i2s(elStep.maxLabel) + ": if(1 == 1) then goto {" + i2s(lastLabel) + "} else goto {};\n";
+			});
+			TranslationStep(beginTranslationStep.translatedText + translatedNonDetermChoice 
+			+ translatedOperators + stepsArray[length(stepsArray) - 1].translatedText, lastLabel);
+		}
+		NonDetermIteration(iterationOperator) : {
+			nextLabel = beginTranslationStep.maxLabel + 1;
+			translationStepOperatorTranslated = translateOperator(iterationOperator, 
+																TranslationStep("", nextLabel));
+			translatedNonDetermIterationText = i2s(beginTranslationStep.maxLabel) + ": if(1==1) then goto {" + i2s(nextLabel) 
+			+ ", " + i2s(translationStepOperatorTranslated.maxLabel + 1) + "} else goto {};\n";
+			translatedIf = i2s(translationStepOperatorTranslated.maxLabel) + ": if(1==1) then goto {" + i2s(beginTranslationStep.maxLabel) 
+			+ "} else goto {};\n" ;
+			TranslationStep(translatedNonDetermIterationText + translationStepOperatorTranslated.translatedText + translatedIf, 
+							translationStepOperatorTranslated.maxLabel + 1);
+		}
+	}
+}
+
+varType2translS(type : VarType) -> string {
+	switch(type){
+		Int():
+			"int";
+		ArrayType(elType):
+			"[" + varType2translS(elType) + "]";	
+	}
+}
+
+decl2s(declarations : [Declaration]) -> string{
+	fold(declarations, "", \declString, declEl -> {
+		declString + "var " + declEl.name + " : " + varType2translS(declEl.type) + ";\n"; 
+	})
+}
+
+tranlsateNeMoProgram(program : NeMoProgram, fileToWritePath : string) -> bool {
+	setFileContent(fileToWritePath, 
+	decl2s(program.declarations) + "\n" +
+	fold(program.operators, TranslationStep("", 0), 
+	\curTranslationStep, operator -> {
+		translateOperator(operator, curTranslationStep)
+		}
+	).translatedText)
+}
+
+
+main(){
+	progr = s2prog(getFileContent("NeMoProgram.txt"));
+	println(progr);
+	println("start types checking...\n");
+	if(checkTypes(progr)){
+		println("everything's alright\n");
+		println("start translation...\n");
+		println(tranlsateNeMoProgram(progr, "VNeMoTranslated.txt"));
+	} else {
+		println("NeMo program has some types mistakes\n");
+	}
+}
