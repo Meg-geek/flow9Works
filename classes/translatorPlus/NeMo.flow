@@ -331,8 +331,8 @@ translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -
 		}
 		Test(lhs, rhs, condition) : {
 			nextLabel = beginTranslationStep.maxLabel + 1;
-			translatedTestText = i2s(beginTranslationStep.maxLabel) + ": " + "if( " + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
-			+ " goto {" + i2s(nextLabel) + "}" + "else {};\n";
+			translatedTestText = i2s(beginTranslationStep.maxLabel) + ": " + "if(" + expr2s(lhs) + condition + expr2s(rhs) + ") then " 
+			+ " goto {" + i2s(nextLabel) + "} " + "else goto {};\n";
 			TranslationStep(beginTranslationStep.translatedText + translatedTestText, nextLabel);
 		}
 		Print(expr) : {
@@ -382,7 +382,7 @@ translateOperator(operator : Operator, beginTranslationStep : TranslationStep) -
 			+ ", " + i2s(translationStepOperatorTranslated.maxLabel + 1) + "} else goto {};\n";
 			translatedIf = i2s(translationStepOperatorTranslated.maxLabel) + ": if(1==1) then goto {" + i2s(beginTranslationStep.maxLabel) 
 			+ "} else goto {};\n" ;
-			TranslationStep(translatedNonDetermIterationText + translationStepOperatorTranslated.translatedText + translatedIf, 
+			TranslationStep(beginTranslationStep.translatedText + translatedNonDetermIterationText + translationStepOperatorTranslated.translatedText + translatedIf, 
 							translationStepOperatorTranslated.maxLabel + 1);
 		}
 	}

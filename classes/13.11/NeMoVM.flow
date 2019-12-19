@@ -130,7 +130,7 @@ printExpr(expr : Expr, varState : Tree<string, Val>) -> string{
 		{
 			switch(lookupTree(varState, name)){
 				None():{
-					println("runtime error");
+					println("variable " + name +" doesn't exist");
 					quit(-1);
 					concatStrings(["runtime error"]);
 				}
@@ -139,12 +139,16 @@ printExpr(expr : Expr, varState : Tree<string, Val>) -> string{
 				}
 			}
 		}
-		App(firstArg, secondArg):
-			concatStrings(["app(", printExpr(firstArg, varState), printExpr(secondArg, varState), ")"]);
-		Upd(firstArg, secondArg, thirdArg):
-			concatStrings(["app(", printExpr(firstArg, varState), printExpr(secondArg, varState), printExpr(thirdArg, varState), ")"]);
-		BinOp(op, lhs, rhs):
-			concatStrings([printExpr(lhs, varState), op, printExpr(rhs, varState)]);
+		App(firstArg, secondArg): {
+			i2s(either(app(firstArg, either(getInt(secondArg, varState), -1), varState), 0));
+		}
+		Upd(firstArg, secondArg, thirdArg): {
+			printVal(either(upd(Upd(firstArg, secondArg, thirdArg), varState), ArrVal(makeTree())));
+		}
+		BinOp(op, lhs, rhs): {
+			mayBeInt = getInt(expr, varState);
+			i2s(either(mayBeInt, 0));
+		}
 	}
 }
 
@@ -488,7 +492,7 @@ getNextStates(label : int, varState : Tree<string, Val>, program : VMProgram)->S
 			(el.label == label)
 		} )){
 		None(): {
-			println("State with label " + i2s(label) + " doesn't exist in program");
+			//println("State with label " + i2s(label) + " doesn't exist in program");
 			makeSet1(EmptyState());
 		}
 		Some(val):{
@@ -522,11 +526,26 @@ execVMProgram(program : VMProgram, firstState : ProgramState) -> Set<ProgramStat
 	})
 }
 
+getDefaultVal(type : VarType) -> Val {
+	switch(type){
+		Int() :
+			IntVal(0);
+		ArrayType(elType):
+			ArrVal(makeTree());	
+	}
+}
+
+createDefaultVarStateTree(vmProgram : VMProgram) -> Tree<string, Val>{
+	fold(vmProgram.declarations, makeTree(), 
+	\curTree, curDecl ->{
+		setTree(curTree, curDecl.name, getDefaultVal(curDecl.type))
+	})
+}
 
 main(){
-	vmProgr = s2prog(getFileContent("example.txt"));
+	vmProgr = s2prog(getFileContent("VNeMoTranslated.txt"));
 	println(vmProgr);
 	println("now exec..");
 	println("\n");
-	execVMProgram(vmProgr, State(0, makeTree()));
+	execVMProgram(vmProgr, State(0, createDefaultVarStateTree(vmProgr)));
 }
